@@ -176,11 +176,12 @@ class Plugin {
 				// Immediate attempt (may be a NullLogger early).
 				$integration->attach();
 				// Defer: once Wonolog finished setup ensure handler attached.
-				add_action( 'wonolog.loaded', function () use ( $integration ) {
+				add_action( 'wonolog.loaded', function ( $factory = null ) use ( $integration ) {
+					// $factory is the PSR-3 logger factory provided by Wonolog; we don't need it
 					$integration->attach();
-				}, PHP_INT_MAX );
+				}, PHP_INT_MAX, 1 );
 				// Late retry on init in case site loaded plugin before Wonolog fully bootstrapped (defensive).
-				add_action( 'init', function () use ( $integration ) {
+				add_action( 'init', function () use ($integration) {
 					$integration->attach();
 				}, 20 );
 			}
