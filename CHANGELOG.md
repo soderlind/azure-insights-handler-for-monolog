@@ -8,6 +8,18 @@ The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) a
 ### Added
 - Placeholder section for upcoming changes.
 
+## [0.3.0] - 2025-08-30
+### Added
+- GitHub-based self-update mechanism integrating plugin-update-checker library with release asset ZIP discovery.
+- Automated GitHub Actions workflows to build distributable ZIP manually and attach ZIP on tagged releases.
+- Updater bootstrap (`GitHubPluginUpdater`) wired into main plugin file.
+
+### Changed
+- Composer dependencies updated to include plugin update checker package (vendored under `vendor/yahnis-elsts`).
+
+### Internal
+- CI refinements for packaging; ensures consistent artifact naming and pattern matching.
+
 ## [0.2.0] - 2025-08-30
 ### Added
 - Network (multisite) settings page with full feature parity to per-site settings (status, connection, behavior, redaction, test telemetry tabs).

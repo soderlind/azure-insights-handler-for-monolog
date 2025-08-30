@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Azure Insights Handler for Wonolog
  * Description: Integrates Wonolog (Monolog) with Azure Application Insights for enhanced logging and telemetry.
- * Version: 0.2.0
+ * Version: 0.3.0
  * Author: Per Søderlind
  * License: GPL2
  * Text Domain: azure-insights-wonolog
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'AIW_PLUGIN_FILE', __FILE__ );
 define( 'AIW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AIW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'AIW_PLUGIN_VERSION', '0.2.0' );
+define( 'AIW_PLUGIN_VERSION', '0.3.0' );
 
 // PSR-4 like autoloader (lightweight fallback when Composer not used).
 // First attempt to load Composer autoloader (provides Monolog, etc.).
@@ -37,6 +37,16 @@ spl_autoload_register( function ($class) {
 		require_once $path;
 	}
 } );
+
+
+$additional_javascript_updater = AzureInsightsWonolog\Updater\GitHubPluginUpdater::create_with_assets(
+	'https://github.com/soderlind/azure-insights-handler-for-wonolog',
+	AIW_PLUGIN_FILE,
+	'azure-insights-handler-for-wonolog',
+	'/azure-insights-handler-for-wonolog\.zip/',
+	'main'
+);
+
 
 // Activation / Deactivation hooks.
 register_activation_hook( __FILE__, function () {
