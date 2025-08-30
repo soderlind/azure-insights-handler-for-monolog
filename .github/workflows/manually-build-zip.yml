@@ -27,7 +27,7 @@ jobs:
         uses: thedoctor0/zip-release@b57d897cb5d60cb78b51a507f63fa184cfe35554 #0.7.6
         with:
           type: 'zip'
-          filename: 'additional-javascript.zip'
+          filename: 'azure-insights-handler-for-wonolog.zip'
           exclusions: '*.git* .editorconfig composer* *.md package.json package-lock.json'
 
       - name: Release
@@ -35,5 +35,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: additional-javascript.zip
+          files: azure-insights-handler-for-wonolog.zip
           tag_name: ${{ github.event.inputs.tag }}
