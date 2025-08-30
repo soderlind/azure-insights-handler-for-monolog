@@ -4,7 +4,7 @@ Tags: azure, application insights, logging, telemetry, monitoring
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.2
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -76,6 +76,11 @@ Yes—toggle off in the Feature Toggles section of settings.
 3. Retry queue viewer.
 
 == Changelog ==
+= 0.3.0 =
+* Added GitHub updater integration (release asset ZIP detection) using plugin-update-checker.
+* Added GitHub Actions workflows for manual build and release asset attachment.
+* Composer/vendor additions for updater.
+
 = 0.2.0 =
 * Network settings page with full parity (status, connection, behavior, redaction, test telemetry tabs).
 * Separated Test Telemetry into its own tab for clarity.
