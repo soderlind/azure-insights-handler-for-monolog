@@ -47,7 +47,7 @@ define( 'AIW_CONNECTION_STRING', 'InstrumentationKey=...;IngestionEndpoint=...' 
 == Frequently Asked Questions ==
 
 = Do I need the Wonolog plugin? =
-Recommended for seamless Monolog integration, but Monolog availability (via another source) is sufficient.
+Recommended previously; now the plugin bundles Wonolog via Composer. If you already have an existing Wonolog install it will be used, otherwise the bundled library provides the required Monolog integration.
 
 = How do I change the sampling rate dynamically? =
 Adjust in settings UI or override per-record with filter `aiw_should_sample`.

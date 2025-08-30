@@ -7,6 +7,7 @@ The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) a
 ## [Unreleased]
 ### Added
 - Placeholder section for upcoming changes.
+- Bundled `inpsyde/wonolog` as a Composer dependency to ensure Monolog integration is always available without a separate Wonolog plugin install.
 
 ## [0.3.0] - 2025-08-30
 ### Added

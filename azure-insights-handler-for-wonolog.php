@@ -67,7 +67,7 @@ add_action( 'plugins_loaded', function () {
 		// Defer admin notice until admin_notices hook.
 		add_action( 'admin_notices', function () {
 			if ( current_user_can( 'activate_plugins' ) ) {
-				echo '<div class="notice notice-error"><p><strong>Azure Insights Handler for Wonolog:</strong> Monolog library not found. Run <code>composer install</code> inside the plugin directory or install Wonolog.</p></div>';
+				echo '<div class="notice notice-error"><p><strong>Azure Insights Handler for Wonolog:</strong> Monolog / Wonolog libraries not loaded. The plugin now bundles Wonolog; run <code>composer install</code> inside the plugin directory to install dependencies.</p></div>';
 			}
 		} );
 		return;

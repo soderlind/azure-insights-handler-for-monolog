@@ -5,7 +5,7 @@
 	"license": "GPL-2.0-or-later",
 	"require": {
 		"php": ">=8.2",
-		"monolog/monolog": "^2.9",
+		"inpsyde/wonolog": "^3.0",
 		"yahnis-elsts/plugin-update-checker": "^5.6"
 	},
 	"require-dev": {
@@ -21,6 +21,8 @@
 			"AzureInsightsWonolog\\Tests\\": "tests/"
 		}
 	},
+	"minimum-stability": "beta",
+	"prefer-stable": true,
 	"scripts": {
 		"test": "phpunit"
 	}

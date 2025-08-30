@@ -36,7 +36,7 @@ WordPress plugin forwarding Wonolog / Monolog logs and custom telemetry (traces,
 ## Requirements
 - WordPress 6.5+
 - PHP 8.2+
-- Wonolog plugin (for Monolog integration) recommended
+- Wonolog (now bundled automatically via Composer; no separate install required)
 
 ## Installation
 
@@ -55,6 +55,7 @@ WordPress plugin forwarding Wonolog / Monolog logs and custom telemetry (traces,
 ### Updates
 Plugin updates are handled automatically via GitHub. No need to manually download and install updates.
 
+If installing from source (cloned repo) run `composer install` to pull the bundled Wonolog dependency.
 
 ### Azure Setup
 1. In Azure Portal create an Application Insights resource (or within existing Log Analytics workspace).
