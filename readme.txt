@@ -4,7 +4,7 @@ Tags: azure, application insights, logging, telemetry, monitoring
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.2
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -76,10 +76,24 @@ Yes—toggle off in the Feature Toggles section of settings.
 3. Retry queue viewer.
 
 == Changelog ==
+= 0.2.0 =
+* Network settings page with full parity (status, connection, behavior, redaction, test telemetry tabs).
+* Separated Test Telemetry into its own tab for clarity.
+* Externalized admin UI CSS (dashboard, navigation, form cards) into `assets/css/aiw-admin.css`.
+* Added comprehensive `USERGUIDE.md` documentation.
+* Added PHPUnit tests for settings sanitization and dashboard summary helpers.
+* Refactored settings page registration & asset loading; reduced inline CSS.
+* Polyfills added for esc_/sanitize_ helpers in network page for static analysis context.
+* Improved multisite logic: per-site page suppressed only when network-activated.
+* Secret masking indicator clarified (🔒 Encrypted).
+
 = 0.1.0 =
 * Initial public release: core telemetry pipeline, sampling, redaction, retry queue (option/transient), async batching, correlation, performance metrics, admin dashboard, CLI commands.
 
 == Upgrade Notice ==
+= 0.2.0 =
+Introduces network admin parity, dedicated test telemetry tab, external CSS, and new documentation/testing. No breaking schema changes; review new network settings behavior if multisite.
+
 = 0.1.0 =
 Initial release.
 
