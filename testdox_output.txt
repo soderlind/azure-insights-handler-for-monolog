@@ -1,0 +1,40 @@
+Cannot load Zend OPcache - it was already loaded
+PHPUnit 9.6.25 by Sebastian Bergmann and contributors.
+
+Azure Insights Handler (AzureInsightsWonolog\Tests\AzureInsightsHandler)
+ ✔ Sampling skips record when decision false
+ ✔ Exception record creates exception telemetry
+ ✔ Redaction filter
+ ✔ Errors bypass sampling drop
+ ✔ Advanced redaction diagnostics
+ ✔ Events api disabled skips emission
+ ✔ Sampler adaptive reduces rate
+
+Performance Metrics (AzureInsightsWonolog\Tests\PerformanceMetrics)
+ ✔ Slow query metrics emitted
+ ✔ Cron run duration metric emitted
+
+Plugin Logging (AzureInsightsWonolog\Tests\PluginLogging)
+ ✔ Monolog info creates trace telemetry
+
+Retry Queue (AzureInsightsWonolog\Tests\RetryQueue)
+ ✔ Enqueue adds item with initial schedule
+ ✔ Due returns items ready for retry
+ ✔ Mark attempt success removes item
+ ✔ Mark attempt failure reschedules or drops
+
+Security And Dedupe (AzureInsightsWonolog\Tests\SecurityAndDedupe)
+ ✔ Encryption and decryption of connection string
+ ✔ Baseline properties includes user hash
+ ✔ Exception deduplication skips duplicate within window
+
+Telemetry Client (AzureInsightsWonolog\Tests\TelemetryClient)
+ ✔ Build trace item has expected fields
+ ✔ Build request item formats duration
+ ✔ Build exception item
+ ✔ Build event item
+ ✔ Batch lines captured
+
+Time: 00:00.014, Memory: 4.00 MB
+
+OK (22 tests, 65 assertions)
