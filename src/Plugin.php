@@ -171,11 +171,8 @@ class Plugin {
 		if ( function_exists( 'add_action' ) ) {
 			// Attempt Wonolog v3 integration: push handler onto the logger instance after Wonolog setup.
 			// Wonolog v3 (bundled) integration: push our handler directly. Legacy hook fallback removed (dependency enforces v3+).
-			if ( function_exists( '\Inpsyde\\Wonolog\\makeLogger' ) ) {
-				$logger = \Inpsyde\Wonolog\makeLogger();
-				if ( $logger instanceof \Monolog\Logger ) {
-					$logger->pushHandler( $this->handler );
-				}
+			if ( class_exists( '\\AzureInsightsWonolog\\Integration\\WonologIntegration' ) ) {
+				(new Integration\WonologIntegration( $this->handler ))->attach();
 			}
 			// Request telemetry on shutdown.
 			add_action( 'shutdown', [ $this, 'shutdown_flush' ], 9999 );
