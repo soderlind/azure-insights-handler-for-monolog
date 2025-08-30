@@ -42,6 +42,12 @@ WordPress plugin forwarding Wonolog / Monolog logs and custom telemetry (traces,
 1. Place plugin in `wp-content/plugins/`.
 2. Activate in WP Admin.
 3. Provide Connection String (preferred) or legacy Instrumentation Key under Settings → Azure Insights.
+	 - Or set one of these before WordPress loads (wp-config.php / server env):
+		 - `AIW_CONNECTION_STRING`
+		 - `APPLICATIONINSIGHTS_CONNECTION_STRING` (fallback)
+		 - `APPINSIGHTS_CONNECTION_STRING` (fallback)
+		 - `AIW_INSTRUMENTATION_KEY` or `APPLICATIONINSIGHTS_INSTRUMENTATION_KEY`
+	 Constants still override environment variables if both are present.
 4. (Optional) Enable Mock Mode for local development and open the Mock Telemetry Viewer.
 
 ### Azure Setup

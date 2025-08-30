@@ -8,6 +8,29 @@ The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) a
 ### Added
 - Placeholder section for upcoming changes.
 
+## [0.2.0] - 2025-08-30
+### Added
+- Network (multisite) settings page with full feature parity to per-site settings (status, connection, behavior, redaction, test telemetry tabs).
+- Dedicated "Test Telemetry" tab separated from redaction/diagnostics for clarity.
+- External admin stylesheet (`assets/css/aiw-admin.css`) consolidating previously inline styles for status dashboard, navigation, and form cards.
+- Initial `USERGUIDE.md` (What / Why / How) comprehensive documentation.
+- PHPUnit coverage for `SettingsPage` sanitization, byte formatting, and dashboard summary logic.
+
+### Changed
+- Refactored `SettingsPage` to register tab-specific submenu entries and enqueue shared CSS only on plugin admin pages.
+- Moved inline CSS from admin rendering methods into external asset to reduce markup size and improve maintainability.
+
+### Fixed
+- Eliminated undefined WordPress helper function notices in static analysis by introducing lightweight polyfills in `NetworkSettingsPage` (esc_*/sanitize_* when running outside WP runtime).
+- Resolved namespace mixing issues by adopting consistent namespace style for network admin page.
+
+### Security
+- Continued masking of encrypted secrets with clearer visual indicator (🔒 Encrypted) in both site and network admin screens.
+
+### Internal
+- Improved multisite activation logic in `Plugin` bootstrap: suppress per-site page only when network-activated, otherwise allow site-level configuration.
+
+
 ## [0.1.0] - 2025-08-30
 ### Added
 - Initial import of Azure Insights handler for Wonolog.
