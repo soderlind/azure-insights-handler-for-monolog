@@ -169,26 +169,38 @@ class Plugin {
 
 		// Hook into Wonolog if present.
 		if ( function_exists( 'add_action' ) ) {
-			add_action( 'wonolog.handlers', function ($handlers) {
-				$handlers[] = $this->handler;
-				return $handlers;
-			} );
+			// Attempt Wonolog v3 integration: push handler onto the logger instance after Wonolog setup.
+			if ( function_exists( '\Inpsyde\\Wonolog\\makeLogger' ) ) {
+				try {
+					$logger = \Inpsyde\Wonolog\makeLogger();
+					if ( $logger instanceof \Monolog\Logger ) {
+						$logger->pushHandler( $this->handler );
+					}
+				} catch ( \Throwable $e ) {
+					// Fallback to legacy hook registration if pushing fails.
+					add_action( 'wonolog.handlers', function ( $handlers ) { $handlers[] = $this->handler; return $handlers; } );
+				}
+			} else {
+				// Legacy Wonolog (< v3) integration via filter.
+				add_action( 'wonolog.handlers', function ( $handlers ) { $handlers[] = $this->handler; return $handlers; } );
+			}
 			// Request telemetry on shutdown.
 			add_action( 'shutdown', [ $this, 'shutdown_flush' ], 9999 );
 			add_action( 'aiw_process_retry_queue', [ $this, 'process_retry_queue' ] );
 			// Inject correlation headers into outbound HTTP requests when enabled (filter allows control)
 			if ( function_exists( 'add_filter' ) ) {
-				add_filter( 'http_request_args', function ($args, $url) {
+				add_filter( 'http_request_args', function ( $args, $url ) {
 					$enable = true;
 					if ( function_exists( 'apply_filters' ) ) {
 						$enable = apply_filters( 'aiw_propagate_correlation', $enable, $url, $args );
 					}
-					if ( ! $enable )
+					if ( ! $enable ) {
 						return $args;
-					if ( ! isset( $args[ 'headers' ] ) || ! is_array( $args[ 'headers' ] ) ) {
-						$args[ 'headers' ] = [];
 					}
-					$args[ 'headers' ][ 'traceparent' ] = $this->correlation->traceparent_header();
+					if ( ! isset( $args['headers'] ) || ! is_array( $args['headers'] ) ) {
+						$args['headers'] = [];
+					}
+					$args['headers']['traceparent'] = $this->correlation->traceparent_header();
 					return $args;
 				}, 10, 2 );
 			}
