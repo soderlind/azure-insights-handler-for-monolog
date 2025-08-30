@@ -172,9 +172,19 @@ class Plugin {
 		$getOpt   = function ($k, $d   = null) {
 			return function_exists( 'get_option' ) ? get_option( $k, $d ) : $d;
 		};
+		// Environment variable support (precedence: constant > env > option)
+		$env_conn = getenv( 'AIW_CONNECTION_STRING' );
+		if ( ! $env_conn ) {
+			// Accept alternate common variable names if present
+			$env_conn = getenv( 'APPLICATIONINSIGHTS_CONNECTION_STRING' ) ?: getenv( 'APPINSIGHTS_CONNECTION_STRING' );
+		}
+		$env_ikey = getenv( 'AIW_INSTRUMENTATION_KEY' );
+		if ( ! $env_ikey ) {
+			$env_ikey = getenv( 'APPLICATIONINSIGHTS_INSTRUMENTATION_KEY' );
+		}
 		$defaults = [ 
-			'connection_string'    => defined( 'AIW_CONNECTION_STRING' ) ? AIW_CONNECTION_STRING : $getOpt( 'aiw_connection_string' ),
-			'instrumentation_key'  => defined( 'AIW_INSTRUMENTATION_KEY' ) ? AIW_INSTRUMENTATION_KEY : $getOpt( 'aiw_instrumentation_key' ),
+			'connection_string'    => defined( 'AIW_CONNECTION_STRING' ) ? AIW_CONNECTION_STRING : ( ( is_string( $env_conn ) && $env_conn !== '' ) ? $env_conn : $getOpt( 'aiw_connection_string' ) ),
+			'instrumentation_key'  => defined( 'AIW_INSTRUMENTATION_KEY' ) ? AIW_INSTRUMENTATION_KEY : ( ( is_string( $env_ikey ) && $env_ikey !== '' ) ? $env_ikey : $getOpt( 'aiw_instrumentation_key' ) ),
 			'min_level'            => defined( 'AIW_MIN_LEVEL' ) ? AIW_MIN_LEVEL : ( $getOpt( 'aiw_min_level' ) ?: 'warning' ),
 			'sampling_rate'        => defined( 'AIW_SAMPLING_RATE' ) ? (float) AIW_SAMPLING_RATE : (float) ( $getOpt( 'aiw_sampling_rate', 1 ) ),
 			'batch_max_size'       => (int) $getOpt( 'aiw_batch_max_size', 20 ),
