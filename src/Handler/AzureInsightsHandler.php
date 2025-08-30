@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace AzureInsightsWonolog\Handler;
 
 use AzureInsightsWonolog\Telemetry\TelemetryClient;
@@ -13,21 +14,20 @@ use AzureInsightsWonolog\Telemetry\Redactor;
  */
 class AzureInsightsHandler extends AbstractProcessingHandler {
 
-	/** @var TelemetryClient */
-	private $client;
+	private TelemetryClient $client;
+	/** @var array<string,mixed> */
+	private array $config;
+	private Sampler $sampler;
 
-	/** @var array */
-	private $config;
-
-	private $sampler;
-
-	public function __construct( TelemetryClient $client, array $config, $level = Logger::DEBUG, $bubble = true ) {
+	/** @param array<string,mixed> $config */
+	public function __construct( TelemetryClient $client, array $config, int $level = Logger::DEBUG, bool $bubble = true ) {
 		$this->client  = $client;
 		$this->config  = $config;
 		$this->sampler = new Sampler( (float) ( $config[ 'sampling_rate' ] ?? 1 ) );
 		parent::__construct( $level, $bubble );
 	}
 
+	/** @param array<string,mixed> $record */
 	protected function write( array $record ): void {
 		list( $decision, $effective ) = $this->sampler->decide( $record );
 		if ( function_exists( 'apply_filters' ) ) {

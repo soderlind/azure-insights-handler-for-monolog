@@ -19,17 +19,22 @@ class SettingsPage {
 				$id = $screen->id;
 				if ( strpos( $id, self::PAGE_SLUG ) === false )
 					return;
-				$screen->add_help_tab( [ 
-					'id'      => 'aiw_overview',
-					'title'   => 'Overview',
-					'content' => '<p>Configure how Wonolog / Monolog events are forwarded to Azure Application Insights. Use Mock mode for local development to inspect telemetry without network calls.</p>',
-				] );
-				$screen->add_help_tab( [ 
-					'id'      => 'aiw_sampling',
-					'title'   => 'Sampling',
-					'content' => '<p>Sampling reduces traffic by sending only a percentage of trace & request events. Errors (severity &gt;= error) are always sent regardless of sampling.</p>',
-				] );
-				$screen->set_help_sidebar( '<p><strong>Docs</strong></p><p><a href="https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview" target="_blank" rel="noopener">Application Insights</a></p>' );
+
+				$tabs = [ 
+					'aiw_overview'    => [ 'Overview', '<p><strong>Azure Insights</strong> forwards Wonolog / Monolog logs plus request, event, metric & exception telemetry to <em>Azure Application Insights</em> with correlation, batching & sampling to keep overhead low.</p><p><strong>Quick Start:</strong> Add Connection String &rarr; Send Test Telemetry &rarr; View in Azure Logs (<code>traces</code>, <code>requests</code>, <code>customMetrics</code>).</p><p><strong>Modes:</strong> <em>Live</em> (sends to Azure) / <em>Mock</em> (stores locally for inspection). Switch via the Connection tab.</p>' ],
+					'aiw_conn_sec'    => [ 'Connection & Security', '<p>Prefer a <strong>Connection String</strong>; legacy Instrumentation Key only if needed. Secrets are stored encrypted (AES-256-CBC w/ WP salts) and masked after save. You can also define constants (<code>AIW_CONNECTION_STRING</code>) in <code>wp-config.php</code> to keep secrets out of the DB.</p><p><strong>Correlation:</strong> Incoming <code>traceparent</code> is honored; new span ID always generated. Outbound HTTP requests get a <code>traceparent</code> header (filter <code>aiw_propagate_correlation</code> to disable).</p>' ],
+					'aiw_sampling'    => [ 'Sampling & Batching', '<p><strong>Sampling</strong> probabilistically drops lower-severity telemetry (errors are always kept). Effective rate auto-drops under burst load. Adjust with slider (0 – 1). Filter <code>aiw_should_sample</code> to override.</p><p><strong>Batching:</strong> Size (<code>Batch Max Size</code>) or interval (<code>Flush Interval</code>) triggers send. Enable <em>Async Send</em> to queue lines for cron (<code>aiw_async_flush</code>) reducing request latency.</p>' ],
+					'aiw_performance' => [ 'Performance Metrics', '<p>If enabled, hook durations exceeding threshold, memory peak, DB query counts / time, slow queries (≥ threshold), cron durations are emitted as <code>customMetrics</code>. Tune thresholds in Behavior tab. Disable if minimal footprint needed.</p>' ],
+					'aiw_redaction'   => [ 'Redaction & Privacy', '<p>Built-in redaction for sensitive keys (password, token, email etc.). Add more keys (comma list) or regex patterns (PCRE) to redact matching <em>values</em>. Redacted telemetry includes a <code>_aiw_redaction</code> metadata object listing affected keys/patterns. Keep regex list short for performance.</p><p>Display or filter a privacy notice via <code>aiw_privacy_notice()</code> & <code>aiw_privacy_notice_text</code>.</p>' ],
+					'aiw_retry'       => [ 'Retry & Async', '<p>Failed batches are queued with exponential backoff (1m,5m,15m,1h). View depth & attempts in Status dashboard or Retry Queue viewer. Storage defaults to options; define <code>AIW_RETRY_STORAGE=\'transient\'</code> to prefer transients (mirrored to option).</p><p>Async dispatch stores short-lived batches in <code>aiw_async_batches</code> – a cron event sends them soon after.</p>' ],
+					'aiw_cli'         => [ 'CLI & Testing', '<p>WP-CLI commands:</p><ul><li><code>wp aiw status</code> &ndash; show last send / queue</li><li><code>wp aiw test --error</code> &ndash; emit sample telemetry</li><li><code>wp aiw flush_queue</code> &ndash; force retry processing</li></ul><p>The <em>Send Test Telemetry</em> button in Redaction tab emits a trace, event, metric (+ exception if selected). Data appears in Azure typically within 1–2 minutes.</p>' ],
+					'aiw_filters'     => [ 'Filters & Extensibility', '<p>Key filters/actions:</p><ul style="margin-left:1.2em;list-style:disc"><li><code>aiw_use_mock_telemetry</code></li><li><code>aiw_should_sample</code></li><li><code>aiw_redact_keys</code></li><li><code>aiw_before_send_batch</code></li><li><code>aiw_enrich_dimensions</code></li><li><code>aiw_propagate_correlation</code></li></ul><p>Use <code>aiw_event()</code> and <code>aiw_metric()</code> to submit custom telemetry, gated by the Events API toggle.</p>' ],
+				];
+				foreach ( $tabs as $id => $def ) {
+					list( $title, $content ) = $def;
+					$screen->add_help_tab( [ 'id' => $id, 'title' => $title, 'content' => $content ] );
+				}
+				$screen->set_help_sidebar( '<p><strong>Resources</strong></p><p><a href="https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview" target="_blank" rel="noopener">Azure Application Insights</a></p><p><a href="https://kusto.azurewebsites.net/docs" target="_blank" rel="noopener">Kusto Query Language</a></p>' );
 			} );
 		}
 	}
@@ -37,50 +42,194 @@ class SettingsPage {
 	private function render_status_dashboard_modern() {
 		$groups  = $this->dashboard_sections();
 		$summary = $this->dashboard_summary( $groups );
+
+		// Enhanced modern CSS
 		echo '<style>
-		.aiw-summary-cards,.aiw-section-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0;}
-		.aiw-summary-cards .card,.aiw-section-wrap .card{margin:0;}
-		.aiw-metric-val{font-size:20px;font-weight:600;margin-top:2px;}
-		.aiw-badge{display:inline-block;border-radius:12px;padding:1px 8px;font-size:11px;line-height:1.4;background:#f0f0f1;margin-left:6px;}
-		.aiw-badge.ok{background:#e7f7ed;color:#185b37;} .aiw-badge.warn{background:#fff4cf;color:#8a5d00;} .aiw-badge.err{background:#fce5e5;color:#8b0000;}
-		.aiw-kv-table{width:100%;} .aiw-kv-table td{padding:4px 8px;vertical-align:top;} .aiw-kv-table td:first-child{width:55%;font-weight:500;}
+		:root {
+			--aiw-primary: #2271b1;
+			--aiw-primary-light: #3582c4;
+			--aiw-success: #00a32a;
+			--aiw-warning: #dba617;
+			--aiw-error: #d63638;
+			--aiw-surface: #ffffff;
+			--aiw-border: #c3c4c7;
+			--aiw-text: #1d2327;
+			--aiw-text-light: #646970;
+			--aiw-shadow: 0 1px 3px rgba(0,0,0,0.1);
+			--aiw-radius: 6px;
+		}
+		
+		.aiw-dashboard {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+		}
+		
+		.aiw-summary-cards, .aiw-section-wrap {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+			gap: 16px;
+			margin: 20px 0;
+		}
+		
+		.aiw-summary-cards .card, .aiw-section-wrap .card {
+			margin: 0;
+			border: 1px solid var(--aiw-border);
+			border-radius: var(--aiw-radius);
+			box-shadow: var(--aiw-shadow);
+			transition: all 0.2s ease;
+			background: var(--aiw-surface);
+		}
+		
+		.aiw-summary-cards .card:hover, .aiw-section-wrap .card:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+		}
+		
+		.aiw-metric-val {
+			font-size: 24px;
+			font-weight: 700;
+			margin-top: 4px;
+			color: var(--aiw-text);
+			line-height: 1.2;
+		}
+		
+		.aiw-badge {
+			display: inline-flex;
+			align-items: center;
+			border-radius: 12px;
+			padding: 3px 8px;
+			font-size: 10px;
+			font-weight: 600;
+			line-height: 1;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			margin-left: 8px;
+			background: var(--aiw-border);
+			color: var(--aiw-text);
+		}
+		
+		.aiw-badge.ok {
+			background: #e7f7ed;
+			color: #185b37;
+			border: 1px solid #7ad03a;
+		}
+		
+		.aiw-badge.warn {
+			background: #fff4cf;
+			color: #8a5d00;
+			border: 1px solid var(--aiw-warning);
+		}
+		
+		.aiw-badge.err {
+			background: #fce5e5;
+			color: #8b0000;
+			border: 1px solid var(--aiw-error);
+		}
+		
+		.aiw-kv-table {
+			width: 100%;
+			border-collapse: collapse;
+		}
+		
+		.aiw-kv-table td {
+			padding: 8px 12px;
+			vertical-align: top;
+			border-bottom: 1px solid #f0f0f1;
+		}
+		
+		.aiw-kv-table td:first-child {
+			width: 45%;
+			font-weight: 500;
+			color: var(--aiw-text);
+		}
+		
+		.aiw-kv-table td:last-child {
+			font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+			font-size: 12px;
+		}
+		
+		.aiw-kv-table code {
+			background: #f6f7f7;
+			padding: 2px 6px;
+			border-radius: 3px;
+			font-size: 11px;
+		}
+		
+		.aiw-section-header {
+			margin: 32px 0 16px;
+			font-size: 20px;
+			font-weight: 600;
+			color: var(--aiw-text);
+			border-bottom: 2px solid var(--aiw-primary);
+			padding-bottom: 8px;
+		}
+		
+		.aiw-card-title {
+			margin: 0 0 16px;
+			font-size: 16px;
+			font-weight: 600;
+			color: var(--aiw-text);
+			display: flex;
+			align-items: center;
+		}
+		
+		.aiw-card-title::before {
+			content: "";
+			width: 4px;
+			height: 20px;
+			background: var(--aiw-primary);
+			border-radius: 2px;
+			margin-right: 12px;
+		}
+		
+		.aiw-card-footer {
+			margin: 12px 0 0;
+			padding: 8px 0 0;
+			border-top: 1px solid #f0f0f1;
+			color: var(--aiw-text-light);
+			font-size: 12px;
+			line-height: 1.4;
+		}
 		</style>';
+
+		echo '<div class="aiw-dashboard">';
 		echo '<div class="aiw-summary-cards">';
 		foreach ( $summary as $item ) {
 			list( $label, $value, $state ) = $item;
 			$escL                          = htmlspecialchars( $label, ENT_QUOTES, 'UTF-8' );
 			$escV                          = htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
-			$badge                         = $state ? '<span class="aiw-badge ' . htmlspecialchars( $state, ENT_QUOTES, 'UTF-8' ) . '">' . strtoupper( htmlspecialchars( $state, ENT_QUOTES, 'UTF-8' ) ) . '</span>' : '';
-			echo '<div class="card"><h3 style="margin:0 0 2px;font-size:13px;">' . $escL . $badge . '</h3><div class="aiw-metric-val">' . $escV . '</div></div>';
+			$badge                         = $state ? '<span class="aiw-badge ' . htmlspecialchars( $state, ENT_QUOTES, 'UTF-8' ) . '">' . htmlspecialchars( $state, ENT_QUOTES, 'UTF-8' ) . '</span>' : '';
+			echo '<div class="card"><h3 style="margin:0 0 4px;font-size:13px;color:var(--aiw-text-light);font-weight:500;">' . $escL . $badge . '</h3><div class="aiw-metric-val">' . $escV . '</div></div>';
 		}
 		echo '</div>';
+
 		foreach ( $groups as $group => $metrics ) {
 			$escG = htmlspecialchars( $group, ENT_QUOTES, 'UTF-8' );
-			echo '<h2 style="margin:24px 0 8px;">' . $escG . '</h2>';
+			echo '<h2 class="aiw-section-header">' . $escG . '</h2>';
 			echo '<div class="aiw-section-wrap">';
 			foreach ( $metrics as $card ) {
 				$title = htmlspecialchars( $card[ 'title' ], ENT_QUOTES, 'UTF-8' );
-				echo '<div class="card"><h3 style="margin-top:0;">' . $title . '</h3>';
+				echo '<div class="card"><h3 class="aiw-card-title">' . $title . '</h3>';
 				if ( ! empty( $card[ 'lines' ] ) ) {
-					echo '<table class="widefat striped aiw-kv-table"><tbody>';
+					echo '<table class="aiw-kv-table"><tbody>';
 					foreach ( $card[ 'lines' ] as $kv ) {
 						$k      = htmlspecialchars( $kv[ 0 ], ENT_QUOTES, 'UTF-8' );
 						$vraw   = (string) $kv[ 1 ];
 						$v      = htmlspecialchars( $vraw, ENT_QUOTES, 'UTF-8' );
 						$state  = $kv[ 2 ] ?? '';
-						$stateB = $state ? '<span class="aiw-badge ' . htmlspecialchars( $state, ENT_QUOTES, 'UTF-8' ) . '">' . strtoupper( htmlspecialchars( $state, ENT_QUOTES, 'UTF-8' ) ) . '</span>' : '';
-						echo '<tr><td>' . $k . '</td><td><code style="font-size:11px;">' . $v . '</code> ' . $stateB . '</td></tr>';
+						$stateB = $state ? '<span class="aiw-badge ' . htmlspecialchars( $state, ENT_QUOTES, 'UTF-8' ) . '">' . htmlspecialchars( $state, ENT_QUOTES, 'UTF-8' ) . '</span>' : '';
+						echo '<tr><td>' . $k . '</td><td><code>' . $v . '</code> ' . $stateB . '</td></tr>';
 					}
 					echo '</tbody></table>';
 				}
 				if ( ! empty( $card[ 'footer' ] ) ) {
 					$footer = htmlspecialchars( $card[ 'footer' ], ENT_QUOTES, 'UTF-8' );
-					echo '<p style="margin:8px 2px 0;color:#555;font-size:11px;line-height:1.4;">' . $footer . '</p>';
+					echo '<p class="aiw-card-footer">' . $footer . '</p>';
 				}
 				echo '</div>';
 			}
 			echo '</div>';
 		}
+		echo '</div>';
 	}
 	public function menu() {
 		if ( ! function_exists( 'add_menu_page' ) || ! function_exists( 'add_submenu_page' ) )
@@ -195,16 +344,16 @@ class SettingsPage {
 			$perf   = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_performance', 1 ) : 1;
 			$events = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_events_api', 1 ) : 1;
 			$diag   = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_internal_diagnostics', 0 ) : 0;
-			
+
 			$render_checkbox = function ($name, $label, $val, $description = '') {
 				$checked = $val ? 'checked' : '';
-				$id = 'aiw_' . str_replace('aiw_', '', $name);
+				$id = 'aiw_' . str_replace( 'aiw_', '', $name );
 				echo '<label style="display:block;margin:4px 0;"><input type="checkbox" id="' . $id . '" name="' . $name . '" value="1" ' . $checked . ' /> ' . $label . '</label>';
-				if ($description) {
+				if ( $description ) {
 					echo '<p class="description" style="margin-left:20px;margin-top:2px;color:#666;">' . $description . '</p>';
 				}
 			};
-			
+
 			$render_checkbox( 'aiw_enable_performance', 'Performance Metrics', $perf, 'Hook duration, slow queries, cron timing' );
 			$render_checkbox( 'aiw_enable_events_api', 'Custom Events & Metrics API', $events, 'aiw_event() and aiw_metric() helper functions' );
 			$render_checkbox( 'aiw_enable_internal_diagnostics', 'Internal Diagnostics', $diag, 'Debug logging to error_log' );
@@ -302,16 +451,16 @@ class SettingsPage {
 	public function render( $forced_tab = null ) {
 		if ( function_exists( 'current_user_can' ) && ! current_user_can( 'manage_options' ) )
 			return;
-		
+
 		// Handle test telemetry postback
 		$this->handle_test_telemetry_request();
-		
+
 		echo '<div class="wrap"><h1>Azure Insights</h1>';
 		$this->render_navigation( $forced_tab );
 		$this->render_tab_content( $this->get_active_tab( $forced_tab ) );
 		echo '</div>';
 	}
-	
+
 	private function handle_test_telemetry_request() {
 		if ( isset( $_POST[ 'aiw_send_test' ] ) && function_exists( 'wp_verify_nonce' ) ) {
 			$nonce_ok = wp_verify_nonce( $_POST[ 'aiw_test_nonce' ] ?? '', 'aiw_send_test_telemetry' );
@@ -324,7 +473,7 @@ class SettingsPage {
 			}
 		}
 	}
-	
+
 	private function send_test_telemetry() {
 		try {
 			$kind = isset( $_POST[ 'aiw_test_kind' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'aiw_test_kind' ] ) ) : 'info';
@@ -352,35 +501,94 @@ class SettingsPage {
 		}
 		return false;
 	}
-	
+
 	private function get_active_tab( $forced_tab ) {
-		$tabs = [ 'status', 'connection', 'behavior', 'redaction' ];
+		$tabs       = [ 'status', 'connection', 'behavior', 'redaction' ];
 		$active_tab = $forced_tab ? $forced_tab : ( isset( $_GET[ 'tab' ] ) ? sanitize_key( $_GET[ 'tab' ] ) : 'status' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		return in_array( $active_tab, $tabs ) ? $active_tab : 'status';
 	}
-	
+
 	private function render_navigation( $forced_tab ) {
-		$tabs = [ 
-			'status'     => 'Status',
-			'connection' => 'Connection',
-			'behavior'   => 'Behavior',
-			'redaction'  => 'Redaction & Diagnostics',
+		$tabs       = [ 
+			'status'     => [ 'Status', 'dashicons-chart-area' ],
+			'connection' => [ 'Connection', 'dashicons-admin-links' ],
+			'behavior'   => [ 'Behavior', 'dashicons-admin-settings' ],
+			'redaction'  => [ 'Redaction & Diagnostics', 'dashicons-privacy' ],
 		];
 		$active_tab = $this->get_active_tab( $forced_tab );
-		$base_url = function_exists( 'admin_url' ) ? admin_url( 'admin.php?page=' . self::PAGE_SLUG ) : '?page=' . self::PAGE_SLUG;
+		$base_url   = function_exists( 'admin_url' ) ? admin_url( 'admin.php?page=' . self::PAGE_SLUG ) : '?page=' . self::PAGE_SLUG;
+
+		echo '<style>
+		.aiw-modern-nav {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			border-radius: 8px;
+			padding: 0;
+			margin: 20px 0;
+			box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+			overflow: hidden;
+		}
 		
-		echo '<style>.aiw-badge{display:inline-block;background:#2271b1;color:#fff;border-radius:3px;padding:2px 6px;font-size:11px;margin-left:6px;} .aiw-intro{margin-top:4px;color:#555;} .aiw-actions{margin:14px 0;} </style>';
-		echo '<h2 class="nav-tab-wrapper" style="margin-bottom:8px;">';
-		foreach ( $tabs as $slug => $label ) {
-			$url  = $base_url . '&tab=' . $slug;
-			$cls  = 'nav-tab' . ( $slug === $active_tab ? ' nav-tab-active' : '' );
-			$escL = function_exists( 'esc_html' ) ? esc_html( $label ) : htmlspecialchars( $label, ENT_QUOTES, 'UTF-8' );
-			$escU = function_exists( 'esc_url' ) ? esc_url( $url ) : htmlspecialchars( $url, ENT_QUOTES, 'UTF-8' );
-			echo '<a class="' . $cls . '" href="' . $escU . '">' . $escL . '</a>';
+		.aiw-modern-nav .nav-tab {
+			background: transparent;
+			border: none;
+			color: rgba(255,255,255,0.8);
+			padding: 16px 24px;
+			margin: 0;
+			text-decoration: none;
+			font-weight: 500;
+			transition: all 0.3s ease;
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+			border-radius: 0;
+		}
+		
+		.aiw-modern-nav .nav-tab:hover {
+			color: #ffffff;
+			background: rgba(255,255,255,0.1);
+		}
+		
+		.aiw-modern-nav .nav-tab.nav-tab-active {
+			background: rgba(255,255,255,0.2);
+			color: #ffffff;
+			box-shadow: inset 0 -3px 0 #ffffff;
+		}
+		
+		.aiw-modern-nav .nav-tab .dashicons {
+			font-size: 16px;
+			width: 16px;
+			height: 16px;
+		}
+		
+		.aiw-intro {
+			background: #f8f9fa;
+			border: 1px solid #e9ecef;
+			border-radius: 6px;
+			padding: 16px 20px;
+			margin: 20px 0;
+			color: #495057;
+			font-size: 14px;
+			line-height: 1.5;
+		}
+		
+		.aiw-intro::before {
+			content: "ℹ️";
+			margin-right: 8px;
+		}
+		</style>';
+
+		echo '<h2 class="nav-tab-wrapper aiw-modern-nav">';
+		foreach ( $tabs as $slug => $meta ) {
+			list( $label, $icon ) = $meta;
+			$url                  = $base_url . '&tab=' . $slug;
+			$cls                  = 'nav-tab' . ( $slug === $active_tab ? ' nav-tab-active' : '' );
+			$escL                 = function_exists( 'esc_html' ) ? esc_html( $label ) : htmlspecialchars( $label, ENT_QUOTES, 'UTF-8' );
+			$escU                 = function_exists( 'esc_url' ) ? esc_url( $url ) : htmlspecialchars( $url, ENT_QUOTES, 'UTF-8' );
+			echo '<a class="' . $cls . '" href="' . $escU . '"><span class="dashicons ' . $icon . '"></span>' . $escL . '</a>';
 		}
 		echo '</h2>';
 	}
-	
+
 	private function render_tab_content( $active_tab ) {
 		switch ( $active_tab ) {
 			case 'status':
@@ -398,7 +606,7 @@ class SettingsPage {
 				break;
 		}
 	}
-	
+
 	private function render_connection_tab() {
 		echo '<p class="aiw-intro">Configure Azure Application Insights connection. Connection String is recommended over legacy Instrumentation Key.</p>';
 		echo '<form method="post" action="options.php">';
@@ -412,7 +620,7 @@ class SettingsPage {
 		}
 		echo '</form>';
 	}
-	
+
 	private function render_behavior_tab() {
 		echo '<p class="aiw-intro">Control sampling, batching, and feature toggles to optimize performance.</p>';
 		echo '<form method="post" action="options.php">';
@@ -425,7 +633,7 @@ class SettingsPage {
 		}
 		echo '</form>';
 	}
-	
+
 	private function render_redaction_tab() {
 		echo '<p class="aiw-intro">Configure privacy settings and test telemetry functionality.</p>';
 		echo '<form method="post" action="options.php">';
@@ -437,7 +645,7 @@ class SettingsPage {
 			submit_button();
 		}
 		echo '</form>';
-		
+
 		// Test telemetry form (separate from settings)
 		$this->render_test_telemetry_form();
 	}
@@ -570,196 +778,397 @@ class SettingsPage {
 			$status[ 'Last Send (UTC)' ] = gmdate( 'Y-m-d H:i:s', (int) $lastSend );
 		return $status;
 	}
-	
+
 	private function render_connection_fields() {
-		echo '<div class="card" style="max-width: 800px;">';
-		echo '<h2>Connection Settings</h2>';
-		echo '<table class="form-table" role="presentation">';
+		echo '<style>
+		.aiw-form-card {
+			background: #ffffff;
+			border: 1px solid #e0e0e0;
+			border-radius: 12px;
+			padding: 24px;
+			margin: 20px 0;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+			max-width: 900px;
+		}
 		
+		.aiw-form-card h2 {
+			margin: 0 0 20px;
+			font-size: 20px;
+			font-weight: 600;
+			color: #1d2327;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+		
+		.aiw-form-card h2::before {
+			content: "";
+			width: 32px;
+			height: 32px;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			border-radius: 8px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		
+		.aiw-form-table {
+			width: 100%;
+			border-collapse: separate;
+			border-spacing: 0;
+		}
+		
+		.aiw-form-table tr {
+			border-bottom: 1px solid #f0f0f1;
+		}
+		
+		.aiw-form-table tr:last-child {
+			border-bottom: none;
+		}
+		
+		.aiw-form-table th {
+			width: 200px;
+			padding: 16px 0;
+			text-align: left;
+			font-weight: 500;
+			color: #1d2327;
+			vertical-align: top;
+		}
+		
+		.aiw-form-table td {
+			padding: 16px 0 16px 20px;
+			vertical-align: top;
+		}
+		
+		.aiw-input-group {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+		
+		.aiw-input {
+			border: 2px solid #e0e0e0;
+			border-radius: 6px;
+			padding: 12px 16px;
+			font-size: 14px;
+			transition: all 0.2s ease;
+			font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+		}
+		
+		.aiw-input:focus {
+			outline: none;
+			border-color: #667eea;
+			box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+		}
+		
+		.aiw-checkbox-wrapper {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 12px 16px;
+			background: #f8f9fa;
+			border-radius: 8px;
+			border: 2px solid transparent;
+			transition: all 0.2s ease;
+		}
+		
+		.aiw-checkbox-wrapper:hover {
+			background: #e9ecef;
+		}
+		
+		.aiw-checkbox-wrapper input[type="checkbox"] {
+			width: 18px;
+			height: 18px;
+			accent-color: #667eea;
+		}
+		
+		.aiw-description {
+			color: #646970;
+			font-size: 13px;
+			line-height: 1.4;
+			margin-top: 8px;
+		}
+		
+		.aiw-status-indicator {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 4px 8px;
+			border-radius: 12px;
+			font-size: 11px;
+			font-weight: 600;
+			text-transform: uppercase;
+		}
+		
+		.aiw-status-indicator.encrypted {
+			background: #e7f7ed;
+			color: #185b37;
+		}
+		</style>';
+
+		echo '<div class="aiw-form-card">';
+		echo '<h2>🔗 Connection Settings</h2>';
+		echo '<table class="aiw-form-table" role="presentation">';
+
 		// Mock Mode
-		$val = function_exists( 'get_option' ) ? (int) get_option( 'aiw_use_mock', 0 ) : 0;
+		$val     = function_exists( 'get_option' ) ? (int) get_option( 'aiw_use_mock', 0 ) : 0;
 		$checked = $val ? 'checked' : '';
 		echo '<tr><th scope="row">Mock Mode</th><td>';
-		echo '<label><input type="checkbox" name="aiw_use_mock" value="1" ' . $checked . ' /> Enable (no HTTP) – inspect telemetry locally.</label>';
+		echo '<div class="aiw-checkbox-wrapper">';
+		echo '<input type="checkbox" name="aiw_use_mock" value="1" ' . $checked . ' id="aiw_mock_mode" />';
+		echo '<label for="aiw_mock_mode">Enable local telemetry storage (no HTTP requests)</label>';
+		echo '</div>';
+		echo '<p class="aiw-description">Perfect for development and testing. Inspect telemetry data locally without sending to Azure.</p>';
 		echo '</td></tr>';
-		
+
 		// Connection String
-		$raw = function_exists( 'get_option' ) ? get_option( 'aiw_connection_string', '' ) : '';
-		$display = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw ) ? '******** (encrypted)' : $raw;
-		$val = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
+		$raw          = function_exists( 'get_option' ) ? get_option( 'aiw_connection_string', '' ) : '';
+		$is_encrypted = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw );
+		$display      = $is_encrypted ? '••••••••••••••••••••••••••••••••••••••••' : $raw;
+		$val          = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
 		echo '<tr><th scope="row">Connection String</th><td>';
-		echo '<input type="text" name="aiw_connection_string" value="' . $val . '" class="regular-text code" placeholder="InstrumentationKey=...;IngestionEndpoint=https://..." autocomplete="off" />';
-		echo '<p class="description">Paste full connection string from Azure Portal. Recommended over legacy instrumentation key.</p>';
+		echo '<div class="aiw-input-group">';
+		echo '<input type="text" name="aiw_connection_string" value="' . $val . '" class="aiw-input regular-text" placeholder="InstrumentationKey=...;IngestionEndpoint=https://..." autocomplete="off" />';
+		if ( $is_encrypted ) {
+			echo '<span class="aiw-status-indicator encrypted">🔒 Encrypted & Stored Securely</span>';
+		}
+		echo '<p class="aiw-description">📋 Copy the full connection string from Azure Portal → Application Insights → Overview. This is the recommended authentication method.</p>';
+		echo '</div>';
 		echo '</td></tr>';
-		
+
 		// Instrumentation Key (legacy)
-		$raw = function_exists( 'get_option' ) ? get_option( 'aiw_instrumentation_key', '' ) : '';
-		$display = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw ) ? '******** (encrypted)' : $raw;
-		$val = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
-		echo '<tr><th scope="row">Instrumentation Key (legacy)</th><td>';
-		echo '<input type="text" name="aiw_instrumentation_key" value="' . $val . '" class="regular-text code" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" />';
-		echo '<p class="description">Deprecated. Use only if not using Connection String.</p>';
+		$raw              = function_exists( 'get_option' ) ? get_option( 'aiw_instrumentation_key', '' ) : '';
+		$is_encrypted_key = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw );
+		$display          = $is_encrypted_key ? '••••••••-••••-••••-••••-••••••••••••' : $raw;
+		$val              = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
+		echo '<tr><th scope="row">Instrumentation Key<br><small style="color:#646970;">(Legacy)</small></th><td>';
+		echo '<div class="aiw-input-group">';
+		echo '<input type="text" name="aiw_instrumentation_key" value="' . $val . '" class="aiw-input regular-text" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" />';
+		if ( $is_encrypted_key ) {
+			echo '<span class="aiw-status-indicator encrypted">🔒 Encrypted & Stored Securely</span>';
+		}
+		echo '<p class="aiw-description">⚠️ Deprecated method. Only use if you cannot obtain a Connection String from Azure Portal.</p>';
+		echo '</div>';
 		echo '</td></tr>';
-		
+
 		echo '</table>';
 		echo '</div>';
 	}
-	
+
 	private function render_behavior_fields() {
-		echo '<div class="card" style="max-width: 800px;">';
-		echo '<h2>Sampling & Batching</h2>';
-		echo '<table class="form-table" role="presentation">';
-		
+		echo '<div class="aiw-form-card">';
+		echo '<h2>⚙️ Sampling & Performance</h2>';
+		echo '<table class="aiw-form-table" role="presentation">';
+
 		// Minimum level
 		$current = function_exists( 'get_option' ) ? get_option( 'aiw_min_level', 'info' ) : 'info';
-		$levels = [ 'debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency' ];
+		$levels  = [ 
+			'debug'     => 'Debug', 'info' => 'Info', 'notice' => 'Notice', 'warning' => 'Warning',
+			'error'     => 'Error', 'critical' => 'Critical', 'alert' => 'Alert', 'emergency' => 'Emergency',
+		];
 		echo '<tr><th scope="row">Minimum Log Level</th><td>';
-		echo '<select name="aiw_min_level">';
-		foreach ( $levels as $lvl ) {
-			$sel = ( $lvl === $current ) ? 'selected' : '';
-			$lab = ucfirst( $lvl );
-			echo '<option value="' . htmlspecialchars( $lvl, ENT_QUOTES, 'UTF-8' ) . '" ' . $sel . '>' . htmlspecialchars( $lab, ENT_QUOTES, 'UTF-8' ) . '</option>';
+		echo '<select name="aiw_min_level" class="aiw-input" style="width:200px;">';
+		foreach ( $levels as $value => $label ) {
+			$sel = ( $value === $current ) ? 'selected' : '';
+			echo '<option value="' . htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' ) . '" ' . $sel . '>' . htmlspecialchars( $label, ENT_QUOTES, 'UTF-8' ) . '</option>';
 		}
 		echo '</select>';
-		echo '<p class="description">Events below this level are ignored before sampling.</p>';
+		echo '<p class="aiw-description">Events below this severity level will be filtered out before sampling decisions.</p>';
 		echo '</td></tr>';
-		
-		// Sampling rate
-		$val = function_exists( 'get_option' ) ? get_option( 'aiw_sampling_rate', '1' ) : '1';
-		$val = is_numeric( $val ) ? $val : '1';
-		$v = htmlspecialchars( $val, ENT_QUOTES, 'UTF-8' );
+
+		// Sampling rate with modern slider
+		$val        = function_exists( 'get_option' ) ? get_option( 'aiw_sampling_rate', '1' ) : '1';
+		$val        = is_numeric( $val ) ? $val : '1';
+		$percentage = round( $val * 100 );
 		echo '<tr><th scope="row">Sampling Rate</th><td>';
-		echo '<input type="range" min="0" max="1" step="0.01" value="' . $v . '" oninput="this.nextElementSibling.value=this.value" name="aiw_sampling_rate" style="width:220px;" aria-label="Sampling rate slider">';
-		echo '<input type="number" min="0" max="1" step="0.01" value="' . $v . '" oninput="this.previousElementSibling.value=this.value" style="width:70px;margin-left:8px;" aria-label="Sampling rate value">';
-		echo '<p class="description">Fraction of non-error traces/requests to send (1 = all). Errors bypass sampling.</p>';
+		echo '<div class="aiw-input-group">';
+		echo '<div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">';
+		echo '<input type="range" min="0" max="1" step="0.01" value="' . htmlspecialchars( $val, ENT_QUOTES, 'UTF-8' ) . '" name="aiw_sampling_rate" style="flex:1;height:8px;border-radius:4px;background:#e0e0e0;outline:none;" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+\'%\'" />';
+		echo '<span style="min-width:40px;font-weight:600;color:#667eea;">' . $percentage . '%</span>';
+		echo '</div>';
+		echo '<p class="aiw-description">🎯 Percentage of non-error traces and requests to send to Azure. Errors always bypass sampling for reliability.</p>';
+		echo '</div>';
 		echo '</td></tr>';
-		
-		// Batch settings
-		$batch_size = function_exists( 'get_option' ) ? (int) get_option( 'aiw_batch_max_size', 20 ) : 20;
+
+		echo '</table>';
+		echo '</div>';
+
+		echo '<div class="aiw-form-card">';
+		echo '<h2>📦 Batching Configuration</h2>';
+		echo '<table class="aiw-form-table" role="presentation">';
+
+		$batch_size     = function_exists( 'get_option' ) ? (int) get_option( 'aiw_batch_max_size', 20 ) : 20;
 		$flush_interval = function_exists( 'get_option' ) ? (int) get_option( 'aiw_batch_flush_interval', 10 ) : 10;
-		echo '<tr><th scope="row">Batch Max Size</th><td>';
-		echo '<input type="number" min="1" name="aiw_batch_max_size" value="' . (int) $batch_size . '" style="width:90px;" />';
-		echo '<p class="description">Flush when this many telemetry items queued.</p>';
+
+		echo '<tr><th scope="row">Batch Size</th><td>';
+		echo '<input type="number" min="1" max="100" name="aiw_batch_max_size" value="' . (int) $batch_size . '" class="aiw-input" style="width:100px;" />';
+		echo '<p class="aiw-description">Maximum telemetry items per batch. Larger batches reduce HTTP overhead but use more memory.</p>';
 		echo '</td></tr>';
-		
-		echo '<tr><th scope="row">Flush Interval (s)</th><td>';
-		echo '<input type="number" min="1" name="aiw_batch_flush_interval" value="' . (int) $flush_interval . '" style="width:90px;" />';
-		echo '<p class="description">Auto flush oldest batch if no flush after this many seconds.</p>';
+
+		echo '<tr><th scope="row">Flush Interval</th><td>';
+		echo '<div style="display:flex;align-items:center;gap:8px;">';
+		echo '<input type="number" min="1" max="300" name="aiw_batch_flush_interval" value="' . (int) $flush_interval . '" class="aiw-input" style="width:100px;" />';
+		echo '<span style="color:#646970;">seconds</span>';
+		echo '</div>';
+		echo '<p class="aiw-description">⏱️ Auto-flush incomplete batches after this timeout to ensure timely delivery.</p>';
 		echo '</td></tr>';
-		
-		// Async send
+
+		// Async send with modern toggle
 		$async = function_exists( 'get_option' ) ? (int) get_option( 'aiw_async_enabled', 0 ) : 0;
-		$checked = $async ? 'checked' : '';
-		echo '<tr><th scope="row">Async Send</th><td>';
-		echo '<label><input type="checkbox" name="aiw_async_enabled" value="1" ' . $checked . ' /> Defer network send via cron (reduces request latency).</label>';
-		echo '<p class="description">Batches queued & sent by background cron process.</p>';
+		echo '<tr><th scope="row">Async Processing</th><td>';
+		echo '<div class="aiw-checkbox-wrapper">';
+		echo '<input type="checkbox" name="aiw_async_enabled" value="1" ' . ( $async ? 'checked' : '' ) . ' id="aiw_async" />';
+		echo '<label for="aiw_async">Enable background sending via WordPress cron</label>';
+		echo '</div>';
+		echo '<p class="aiw-description">🚀 Improves page load times by deferring network requests to background processes.</p>';
 		echo '</td></tr>';
-		
+
 		echo '</table>';
 		echo '</div>';
-		
-		echo '<div class="card" style="max-width: 800px; margin-top: 20px;">';
-		echo '<h2>Performance Thresholds</h2>';
-		echo '<table class="form-table" role="presentation">';
-		
-		$hook_thresh = function_exists( 'get_option' ) ? (int) get_option( 'aiw_slow_hook_threshold_ms', 150 ) : 150;
+
+		echo '<div class="aiw-form-card">';
+		echo '<h2>📊 Performance Monitoring</h2>';
+		echo '<table class="aiw-form-table" role="presentation">';
+
+		$hook_thresh  = function_exists( 'get_option' ) ? (int) get_option( 'aiw_slow_hook_threshold_ms', 150 ) : 150;
 		$query_thresh = function_exists( 'get_option' ) ? (int) get_option( 'aiw_slow_query_threshold_ms', 500 ) : 500;
-		
-		echo '<tr><th scope="row">Slow Hook Threshold (ms)</th><td>';
-		echo '<input type="number" min="10" name="aiw_slow_hook_threshold_ms" value="' . (int) $hook_thresh . '" style="width:90px;" />';
-		echo '<p class="description">Record hook_duration_ms metrics only when duration exceeds this threshold.</p>';
+
+		echo '<tr><th scope="row">Slow Hook Threshold</th><td>';
+		echo '<div style="display:flex;align-items:center;gap:8px;">';
+		echo '<input type="number" min="10" max="5000" name="aiw_slow_hook_threshold_ms" value="' . (int) $hook_thresh . '" class="aiw-input" style="width:100px;" />';
+		echo '<span style="color:#646970;">milliseconds</span>';
+		echo '</div>';
+		echo '<p class="aiw-description">🐌 Record hook execution times that exceed this threshold as custom metrics.</p>';
 		echo '</td></tr>';
-		
-		echo '<tr><th scope="row">Slow Query Threshold (ms)</th><td>';
-		echo '<input type="number" min="10" name="aiw_slow_query_threshold_ms" value="' . (int) $query_thresh . '" style="width:90px;" />';
-		echo '<p class="description">Emit db_slow_query_ms metrics for queries ≥ this duration (SAVEQUERIES required).</p>';
+
+		echo '<tr><th scope="row">Slow Query Threshold</th><td>';
+		echo '<div style="display:flex;align-items:center;gap:8px;">';
+		echo '<input type="number" min="10" max="10000" name="aiw_slow_query_threshold_ms" value="' . (int) $query_thresh . '" class="aiw-input" style="width:100px;" />';
+		echo '<span style="color:#646970;">milliseconds</span>';
+		echo '</div>';
+		echo '<p class="aiw-description">🗃️ Track database queries slower than this threshold (requires SAVEQUERIES constant).</p>';
 		echo '</td></tr>';
-		
+
 		echo '</table>';
 		echo '</div>';
-		
-		echo '<div class="card" style="max-width: 800px; margin-top: 20px;">';
-		echo '<h2>Feature Toggles</h2>';
-		echo '<table class="form-table" role="presentation">';
-		
-		$perf = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_performance', 1 ) : 1;
+
+		echo '<div class="aiw-form-card">';
+		echo '<h2>🔧 Feature Toggles</h2>';
+
+		$perf   = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_performance', 1 ) : 1;
 		$events = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_events_api', 1 ) : 1;
-		$diag = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_internal_diagnostics', 0 ) : 0;
-		
-		echo '<tr><th scope="row">Feature Toggles</th><td>';
-		
-		$render_checkbox = function ($name, $label, $val, $description = '') {
-			$checked = $val ? 'checked' : '';
-			$id = 'aiw_' . str_replace('aiw_', '', $name);
-			echo '<label style="display:block;margin:4px 0;"><input type="checkbox" id="' . $id . '" name="' . $name . '" value="1" ' . $checked . ' /> ' . $label . '</label>';
-			if ($description) {
-				echo '<p class="description" style="margin-left:20px;margin-top:2px;color:#666;font-size:12px;">' . $description . '</p>';
-			}
-		};
-		
-		$render_checkbox( 'aiw_enable_performance', 'Performance Metrics', $perf, 'Hook duration, slow queries, cron timing' );
-		$render_checkbox( 'aiw_enable_events_api', 'Custom Events & Metrics API', $events, 'aiw_event() and aiw_metric() helper functions' );
-		$render_checkbox( 'aiw_enable_internal_diagnostics', 'Internal Diagnostics', $diag, 'Debug logging to error_log' );
-		echo '<p class="description" style="margin-top:8px;">Disable unused subsystems to reduce overhead.</p>';
-		echo '</td></tr>';
-		
-		echo '</table>';
+		$diag   = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_internal_diagnostics', 0 ) : 0;
+
+		$features = [ 
+			[ 'aiw_enable_performance', 'Performance Metrics', $perf, '📈 Hook timing, slow queries, cron execution monitoring' ],
+			[ 'aiw_enable_events_api', 'Events & Metrics API', $events, '🎯 aiw_event() and aiw_metric() helper functions' ],
+			[ 'aiw_enable_internal_diagnostics', 'Debug Logging', $diag, '🔍 Internal diagnostics written to error_log (development only)' ],
+		];
+
+		foreach ( $features as $feature ) {
+			list( $name, $label, $enabled, $description ) = $feature;
+			$id                                           = str_replace( 'aiw_enable_', 'feature_', $name );
+			echo '<div class="aiw-checkbox-wrapper" style="margin-bottom:12px;">';
+			echo '<input type="checkbox" name="' . $name . '" value="1" ' . ( $enabled ? 'checked' : '' ) . ' id="' . $id . '" />';
+			echo '<div>';
+			echo '<label for="' . $id . '" style="font-weight:500;">' . $label . '</label>';
+			echo '<p style="margin:4px 0 0;font-size:12px;color:#646970;">' . $description . '</p>';
+			echo '</div>';
+			echo '</div>';
+		}
+
+		echo '<p class="aiw-description" style="margin-top:16px;">💡 Disable unused features to minimize performance overhead and reduce telemetry noise.</p>';
 		echo '</div>';
 	}
-	
+
 	private function render_redaction_fields() {
-		echo '<div class="card" style="max-width: 800px;">';
-		echo '<h2>Privacy & Redaction</h2>';
-		echo '<table class="form-table" role="presentation">';
-		
+		echo '<div class="aiw-form-card">';
+		echo '<h2>🔒 Privacy & Redaction</h2>';
+		echo '<table class="aiw-form-table" role="presentation">';
+
 		// Additional redact keys
 		$raw = function_exists( 'get_option' ) ? get_option( 'aiw_redact_additional_keys', '' ) : '';
 		$val = function_exists( 'esc_textarea' ) ? esc_textarea( $raw ) : htmlspecialchars( $raw, ENT_QUOTES, 'UTF-8' );
-		echo '<tr><th scope="row">Additional Redact Keys</th><td>';
-		echo '<textarea name="aiw_redact_additional_keys" rows="3" class="large-text" placeholder="key1,key2,email_address">' . $val . '</textarea>';
-		echo '<p class="description">Comma-separated case-insensitive keys to redact. Applied in addition to built-in list.</p>';
+		echo '<tr><th scope="row">Sensitive Keys</th><td>';
+		echo '<div class="aiw-input-group">';
+		echo '<textarea name="aiw_redact_additional_keys" rows="3" class="aiw-input large-text" placeholder="password,token,secret,api_key,email" style="font-family:ui-monospace,monospace;resize:vertical;">' . $val . '</textarea>';
+		echo '<p class="aiw-description">🏷️ Comma-separated list of context keys to automatically redact. Case-insensitive matching applied to both keys and nested object properties.</p>';
+		echo '</div>';
 		echo '</td></tr>';
-		
-		// Regex patterns
+
+		// Regex patterns with enhanced styling
 		$raw = function_exists( 'get_option' ) ? get_option( 'aiw_redact_patterns', '' ) : '';
 		$val = function_exists( 'esc_textarea' ) ? esc_textarea( $raw ) : htmlspecialchars( $raw, ENT_QUOTES, 'UTF-8' );
-		echo '<tr><th scope="row">Regex Redact Patterns</th><td>';
-		echo '<textarea name="aiw_redact_patterns" rows="3" class="large-text" placeholder="/(?:bearer)\s+[a-z0-9\-\._]+/i,/[0-9]{16}/">' . $val . '</textarea>';
-		echo '<p class="description">Comma-separated PCRE patterns. Any matching values will be replaced with [REDACTED]. Use cautiously for performance.</p>';
+		echo '<tr><th scope="row">Pattern Matching</th><td>';
+		echo '<div class="aiw-input-group">';
+		echo '<textarea name="aiw_redact_patterns" rows="4" class="aiw-input large-text" placeholder="/(?:bearer|token)\s+[a-z0-9\-\._]+/i,/\b[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}\b/,/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/" style="font-family:ui-monospace,monospace;resize:vertical;">' . $val . '</textarea>';
+		echo '<div style="margin-top:12px;padding:12px;background:#f8f9fa;border-radius:6px;border-left:4px solid #667eea;">';
+		echo '<p style="margin:0 0 8px;font-weight:500;color:#1d2327;">Common Patterns:</p>';
+		echo '<code style="display:block;margin:4px 0;font-size:11px;color:#646970;">• Credit Cards: /\\b[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}\\b/</code>';
+		echo '<code style="display:block;margin:4px 0;font-size:11px;color:#646970;">• Email Addresses: /\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b/</code>';
+		echo '<code style="display:block;margin:4px 0;font-size:11px;color:#646970;">• Bearer Tokens: /(?:bearer|token)\\s+[a-z0-9\\-\\._]+/i</code>';
+		echo '</div>';
+		echo '<p class="aiw-description">🎯 Advanced PCRE regex patterns for value-based redaction. Use sparingly as complex patterns impact performance.</p>';
+		echo '</div>';
 		echo '</td></tr>';
-		
+
 		echo '</table>';
+
+		// Privacy notice section
+		echo '<div style="margin-top:20px;padding:16px;background:linear-gradient(135deg,#e8f4f8 0%,#f0f8ff 100%);border-radius:8px;border:1px solid #b8d4ea;">';
+		echo '<h4 style="margin:0 0 8px;color:#1d2327;display:flex;align-items:center;gap:8px;"><span>🛡️</span> Privacy Protection</h4>';
+		echo '<p style="margin:0;font-size:13px;line-height:1.5;color:#495057;">All redacted data is replaced with <code>[REDACTED]</code> markers. When redaction occurs, diagnostic metadata is added to help track what was filtered. Secrets (connection strings, instrumentation keys) are encrypted using WordPress salt keys before database storage.</p>';
+		echo '</div>';
 		echo '</div>';
 	}
-	
+
 	private function render_test_telemetry_form() {
-		echo '<div class="card" style="max-width: 800px; margin-top: 20px;">';
-		echo '<h2>Test Telemetry</h2>';
+		echo '<div class="aiw-form-card">';
+		echo '<h2>🧪 Test Telemetry</h2>';
 		if ( ! function_exists( 'wp_nonce_field' ) ) {
 			echo '<p>WordPress context unavailable.</p>';
 			echo '</div>';
 			return;
 		}
+
+		echo '<div style="margin-bottom:20px;padding:16px;background:#f8f9fa;border-radius:8px;border-left:4px solid #667eea;">';
+		echo '<h4 style="margin:0 0 8px;color:#1d2327;">🎯 Test Suite</h4>';
+		echo '<p style="margin:0;font-size:13px;line-height:1.5;color:#495057;">Send sample telemetry to validate your Azure Application Insights configuration. This will generate a trace, custom event, metric, and optionally an exception.</p>';
+		echo '</div>';
+
 		echo '<form method="post" action="" style="margin:0;">';
 		wp_nonce_field( 'aiw_send_test_telemetry', 'aiw_test_nonce' );
-		echo '<table class="form-table" role="presentation">';
+		echo '<table class="aiw-form-table" role="presentation">';
 		echo '<tr><th scope="row">Test Type</th><td>';
-		echo '<select name="aiw_test_kind" style="margin-right: 10px;">';
-		echo '<option value="info">Info Trace</option>';
-		echo '<option value="error">Error + Exception</option>';
+		echo '<div style="display:flex;align-items:center;gap:16px;">';
+		echo '<select name="aiw_test_kind" class="aiw-input" style="width:200px;">';
+		echo '<option value="info">📊 Info Trace + Metrics</option>';
+		echo '<option value="error">🚨 Error Trace + Exception</option>';
 		echo '</select>';
-		echo '<button class="button button-secondary">Send Test Telemetry</button>';
+		echo '<button type="submit" class="button button-primary" style="padding:8px 20px;font-weight:500;">Send Test Data</button>';
+		echo '</div>';
 		echo '<input type="hidden" name="aiw_send_test" value="1" />';
-		echo '<p class="description">Sends sample trace, event, metric, and (if error chosen) exception telemetry.</p>';
+		echo '<p class="aiw-description">Results typically appear in Azure within 1-2 minutes. Check the Application Insights Logs blade for traces table.</p>';
 		echo '</td></tr>';
 		echo '</table>';
 		echo '</form>';
-		
+
+		// Enhanced status display
 		if ( isset( $_GET[ 'aiw_test_sent' ] ) ) {
-			$ok = intval( $_GET[ 'aiw_test_sent' ] ) === 1;
-			$class = $ok ? 'notice-success' : 'notice-error';
-			$message = $ok ? 'Test telemetry dispatched successfully.' : 'Test telemetry failed to send.';
-			echo '<div class="notice ' . $class . ' inline"><p>' . $message . '</p></div>';
+			$ok          = intval( $_GET[ 'aiw_test_sent' ] ) === 1;
+			$icon        = $ok ? '✅' : '❌';
+			$bgColor     = $ok ? '#e7f7ed' : '#fce5e5';
+			$borderColor = $ok ? '#7ad03a' : '#d63638';
+			$textColor   = $ok ? '#185b37' : '#8b0000';
+			$message     = $ok ? 'Test telemetry dispatched successfully!' : 'Test telemetry failed to send.';
+			$details     = $ok
+				? 'Data sent to Azure Application Insights. Check the Logs blade in Azure Portal within 1-2 minutes.'
+				: 'Check your connection settings and Azure Application Insights configuration.';
+
+			echo '<div style="margin-top:20px;padding:16px;background:' . $bgColor . ';border:1px solid ' . $borderColor . ';border-radius:8px;color:' . $textColor . ';">';
+			echo '<p style="margin:0 0 4px;font-weight:600;font-size:14px;">' . $icon . ' ' . $message . '</p>';
+			echo '<p style="margin:0;font-size:12px;opacity:0.8;">' . $details . '</p>';
+			echo '</div>';
 		}
 		echo '</div>';
 	}

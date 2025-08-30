@@ -1,15 +1,18 @@
 <?php
+declare(strict_types=1);
 namespace AzureInsightsWonolog\Performance;
 
 use AzureInsightsWonolog\Plugin;
 
 class Collector {
-	private $start_times = [];
-	private $metrics = [];
-	private $enabled;
-	private $threshold_ms;
-	private $slow_query_threshold_ms;
-	private $cron_start;
+	/** @var array<string,float> */
+	private array $start_times = [];
+	/** @var array<int,array{name:string,value:float|int,properties:array<string,string>}> */
+	private array $metrics = [];
+	private bool $enabled;
+	private int $threshold_ms;
+	private int $slow_query_threshold_ms;
+	private ?float $cron_start = null;
 
 	public function __construct( bool $enabled = true, int $threshold_ms = 150 ) {
 		$this->enabled = $enabled;
@@ -31,9 +34,10 @@ class Collector {
 		}
 	}
 
-	public function hook() {
-		if ( ! $this->enabled || ! function_exists( 'add_action' ) )
+	public function hook(): void {
+		if ( ! $this->enabled || ! function_exists( 'add_action' ) ) {
 			return;
+		}
 		$hooks = [ 'plugins_loaded', 'init', 'wp_loaded', 'parse_request', 'wp', 'template_redirect', 'send_headers' ];
 		foreach ( $hooks as $h ) {
 			$this->instrument( $h );
@@ -41,7 +45,7 @@ class Collector {
 		add_action( 'shutdown', [ $this, 'finalize' ], 5 );
 	}
 
-	private function instrument( string $hook ) {
+	private function instrument( string $hook ): void {
 		if ( function_exists( 'add_action' ) ) {
 			add_action( $hook, function () use ($hook) {
 				$this->start_times[ $hook ] = microtime( true );
@@ -57,9 +61,10 @@ class Collector {
 		}
 	}
 
-	public function finalize() {
-		if ( ! $this->enabled )
+	public function finalize(): void {
+		if ( ! $this->enabled ) {
 			return;
+		}
 		// Add memory peak metric
 		$mem_peak        = memory_get_peak_usage( true );
 		$this->metrics[] = [ 'name' => 'memory_peak_bytes', 'value' => (float) $mem_peak, 'properties' => [] ];
@@ -92,8 +97,9 @@ class Collector {
 			$cronDur         = ( microtime( true ) - $this->cron_start ) * 1000;
 			$this->metrics[] = [ 'name' => 'cron_run_duration_ms', 'value' => (float) $cronDur, 'properties' => [] ];
 		}
-		if ( empty( $this->metrics ) )
+		if ( empty( $this->metrics ) ) {
 			return;
+		}
 		$plugin    = Plugin::instance();
 		$telemetry = $plugin->telemetry();
 		$corr      = $plugin->correlation();

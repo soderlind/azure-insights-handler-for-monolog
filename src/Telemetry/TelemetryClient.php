@@ -1,17 +1,22 @@
 <?php
+declare(strict_types=1);
 namespace AzureInsightsWonolog\Telemetry;
 
 /**
  * Lightweight telemetry client handling buffering & sending to Azure.
  */
 class TelemetryClient {
-	private $config;
-	private $buffer = [];
-	private $last_flush_time;
-	private $on_failure; // callable|null
-	private $ingest_url; // resolved ingest endpoint
-	private $last_payload_lines = []; // debug/testing
-	private $transport; // BatchTransport
+	/** @var array<string,mixed> */
+	private array $config;
+	/** @var array<int,array<string,mixed>> */
+	private array $buffer = [];
+	private float $last_flush_time;
+	/** @var callable|null */
+	private $on_failure = null; // callable|null
+	private string $ingest_url; // resolved ingest endpoint
+	/** @var string[] */
+	private array $last_payload_lines = []; // debug/testing
+	private BatchTransport $transport; // BatchTransport
 
 	const DEFAULT_INGEST_URL = 'https://dc.services.visualstudio.com/v2/track';
 
@@ -22,11 +27,12 @@ class TelemetryClient {
 		$this->transport       = new BatchTransport( $this->ingest_url );
 	}
 
-	public function set_failure_callback( callable $cb ) {
+	public function set_failure_callback( callable $cb ): void {
 		$this->on_failure = $cb;
 	}
 
-	public function add( array $item ) {
+	/** @param array<string,mixed> $item */
+	public function add( array $item ): void {
 		$this->buffer[] = $item;
 		if ( count( $this->buffer ) >= (int) $this->config[ 'batch_max_size' ] ) {
 			$this->flush();
@@ -38,7 +44,7 @@ class TelemetryClient {
 		}
 	}
 
-	public function flush() {
+	public function flush(): void {
 		if ( empty( $this->buffer ) ) {
 			return;
 		}
@@ -85,6 +91,7 @@ class TelemetryClient {
 	 * @param array $payload_lines Array of JSON strings (one per telemetry item)
 	 * @param array $original_items Original item array (used for retry callback)
 	 */
+	/** @param string[] $payload_lines @param array<int,array<string,mixed>> $original_items */
 	public function send_lines( array $payload_lines, array $original_items ): void {
 		if ( empty( $payload_lines ) ) {
 			return;
@@ -96,15 +103,18 @@ class TelemetryClient {
 	/**
 	 * Test helper: returns current unsent buffer (do not use in production logic).
 	 */
+	/** @return array<int,array<string,mixed>> */
 	public function debug_get_buffer(): array {
 		return $this->buffer;
 	}
 
 	/** Debug helper: last payload lines passed to send (after filter) */
+	/** @return string[] */
 	public function debug_last_payload_lines(): array {
 		return $this->last_payload_lines;
 	}
 
+	/** @param array<string,mixed> $record */
 	public function build_trace_item( array $record, string $trace_id, string $span_id ): array {
 		$time                     = gmdate( 'c' );
 		$severity                 = $this->map_level( $record[ 'level' ] ?? 200 );
@@ -133,6 +143,7 @@ class TelemetryClient {
 	}
 
 	/** Build an Event telemetry item */
+	/** @param array<string,mixed> $properties @param array<string,float|int> $measurements */
 	public function build_event_item( string $name, array $properties, array $measurements, string $trace_id, string $span_id ): array {
 		$time                     = gmdate( 'c' );
 		$properties[ 'trace_id' ] = $trace_id;
@@ -167,6 +178,7 @@ class TelemetryClient {
 		return sprintf( '%02d:%02d:%02d.%03d', $hours, $minutes, $seconds, $ms );
 	}
 
+	/** @param array<string,mixed> $data */
 	public function build_request_item( array $data, float $duration_ms, string $trace_id, string $span_id, ?string $parent_span_id ): array {
 		$time = gmdate( 'c' );
 		return [ 
@@ -196,6 +208,7 @@ class TelemetryClient {
 		];
 	}
 
+	/** @param array<string,mixed> $record */
 	public function build_exception_item( \Throwable $exception, array $record, string $trace_id, string $span_id ): array {
 		$time     = gmdate( 'c' );
 		$severity = $this->map_level( $record[ 'level' ] ?? 400 );
@@ -252,6 +265,7 @@ class TelemetryClient {
 	}
 
 	/** Build a metric telemetry item */
+	/** @param array<string,mixed> $properties */
 	public function build_metric_item( string $name, float $value, array $properties, string $trace_id, string $span_id ): array {
 		$time                     = gmdate( 'c' );
 		$properties[ 'trace_id' ] = $trace_id;
@@ -279,6 +293,7 @@ class TelemetryClient {
 	}
 
 	/** Build baseline properties (site/env info). */
+	/** @return array<string,string> */
 	public function baseline_properties(): array {
 		$props = [];
 		if ( function_exists( 'home_url' ) ) {

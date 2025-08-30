@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace AzureInsightsWonolog\Telemetry;
 
 /**
@@ -6,7 +7,8 @@ namespace AzureInsightsWonolog\Telemetry;
  * Enable via filter: add_filter('aiw_use_mock_telemetry', '__return_true');
  */
 class MockTelemetryClient extends TelemetryClient {
-	private $sent = [];
+	/** @var array<int,array<string,mixed>> */
+	private array $sent = [];
 
 	public function __construct( array $config ) {
 		parent::__construct( $config );
@@ -19,16 +21,14 @@ class MockTelemetryClient extends TelemetryClient {
 		}
 	}
 
-	/**
-	 * In mock mode we want immediate visibility; flush after each add.
-	 */
-	public function add( array $item ) {
+	/** In mock mode we want immediate visibility; flush after each add. */
+	public function add( array $item ): void {
 		// Use parent buffering logic then force flush so viewer reflects latest.
 		parent::add( $item );
 		$this->flush();
 	}
 
-	public function flush() {
+	public function flush(): void {
 		if ( empty( $this->buffer_snapshot() ) )
 			return;
 		$this->sent = array_merge( $this->sent, $this->buffer_snapshot() );
@@ -43,6 +43,7 @@ class MockTelemetryClient extends TelemetryClient {
 	}
 
 	// Expose buffer utilities (wrap protected behavior using reflection since original properties private)
+	/** @return array<int,array<string,mixed>> */
 	private function buffer_snapshot(): array {
 		$ref  = new \ReflectionClass( TelemetryClient::class);
 		$prop = $ref->getProperty( 'buffer' );
@@ -56,6 +57,7 @@ class MockTelemetryClient extends TelemetryClient {
 		$prop->setValue( $this, [] );
 	}
 
+	/** @return array<int,array<string,mixed>> */
 	public function sent_items(): array {
 		return $this->sent;
 	}

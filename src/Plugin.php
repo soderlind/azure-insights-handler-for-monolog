@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace AzureInsightsWonolog;
 
 use AzureInsightsWonolog\Telemetry\Correlation;
@@ -16,28 +17,16 @@ use AzureInsightsWonolog\Admin\StatusPanel;
  * Core plugin bootstrap singleton.
  */
 class Plugin {
-	private static $instance; // @var Plugin
+	private static ?Plugin $instance = null; // @var Plugin
 
-	/** @var TelemetryClient */
-	private $telemetry_client;
-
-	/** @var Correlation */
-	private $correlation;
-
-	/** @var AzureInsightsHandler */
-	private $handler;
-
-	/** @var array */
-	private $buffer = [];
-
-	/** @var float */
-	private $request_start;
-
-	/** @var RetryQueue */
-	private $retry_queue;
-
-	/** @var Collector */
-	private $performance_collector;
+	private ?TelemetryClient $telemetry_client = null;
+	private ?Correlation $correlation = null;
+	private ?AzureInsightsHandler $handler = null;
+	/** @var array<int,mixed> */
+	private array $buffer = [];
+	private float $request_start = 0.0;
+	private ?RetryQueue $retry_queue = null;
+	private ?Collector $performance_collector = null;
 
 	/**
 	 * Get singleton instance.
@@ -50,7 +39,7 @@ class Plugin {
 	}
 
 	/** Activation hook */
-	public static function activate() {
+	public static function activate(): void {
 		// Schedule retry cron if not exists.
 		if ( function_exists( 'wp_next_scheduled' ) && ! wp_next_scheduled( 'aiw_process_retry_queue' ) ) {
 			if ( function_exists( 'wp_schedule_event' ) ) {
@@ -72,14 +61,14 @@ class Plugin {
 	}
 
 	/** Deactivation hook */
-	public static function deactivate() {
+	public static function deactivate(): void {
 		if ( function_exists( 'wp_clear_scheduled_hook' ) ) {
 			wp_clear_scheduled_hook( 'aiw_process_retry_queue' );
 		}
 	}
 
 	/** Bootstrap runtime */
-	public function boot() {
+	public function boot(): void {
 		// Prepare correlation first.
 		$this->correlation = new Correlation();
 		$this->correlation->init();
@@ -238,14 +227,14 @@ class Plugin {
 	}
 
 	/** Flush on shutdown */
-	public function shutdown_flush() {
+	public function shutdown_flush(): void {
 		if ( $this->telemetry_client ) {
 			$this->record_request_telemetry();
 			$this->telemetry_client->flush();
 		}
 	}
 
-	public function process_retry_queue() {
+	public function process_retry_queue(): void {
 		if ( ! $this->retry_queue )
 			return;
 		$due = $this->retry_queue->due();
@@ -275,7 +264,7 @@ class Plugin {
 		return false;
 	}
 
-	private function record_request_telemetry() {
+	private function record_request_telemetry(): void {
 		try {
 			$corr        = $this->correlation();
 			$duration_ms = ( microtime( true ) - $this->request_start ) * 1000;
@@ -303,9 +292,9 @@ class Plugin {
 	}
 
 	public function telemetry(): TelemetryClient {
-		return $this->telemetry_client;
+		return $this->telemetry_client ?? new TelemetryClient( [] ); // Fallback; should be initialized in boot()
 	}
 	public function correlation(): Correlation {
-		return $this->correlation;
+		return $this->correlation ?? new Correlation();
 	}
 }

@@ -34,8 +34,8 @@ WordPress plugin forwarding Wonolog / Monolog logs and custom telemetry (traces,
  - Admin Status Panel (live runtime metrics: last send time, retry depth, async batches, buffer size, memory, thresholds, versions)
 
 ## Requirements
-- WordPress 6.0+
-- PHP 7.4+
+- WordPress 6.5+
+- PHP 8.2+
 - Wonolog plugin (for Monolog integration) recommended
 
 ## Installation

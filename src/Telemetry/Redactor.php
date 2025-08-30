@@ -1,8 +1,15 @@
 <?php
+declare(strict_types=1);
 namespace AzureInsightsWonolog\Telemetry;
 
 /** Central redaction utility. */
+
 class Redactor {
+	/**
+	 * Redact sensitive values in a context array.
+	 * @param array<string,mixed> $context
+	 * @return array<string,mixed>
+	 */
 	public static function redact( array $context ): array {
 		$default_redact = [ 'password', 'pwd', 'pass', 'email', 'user_email', 'token' ];
 		$keys           = $default_redact;
@@ -30,7 +37,7 @@ class Redactor {
 		$matched_pats  = [];
 		foreach ( $context as $k => $v ) {
 			if ( in_array( strtolower( (string) $k ), $lower, true ) ) {
-				$context[ $k ]     = '[REDACTED]';
+				$context[ $k ]   = '[REDACTED]';
 				$redacted_keys[] = (string) $k;
 			}
 		}
@@ -60,7 +67,7 @@ class Redactor {
 				if ( is_string( $v ) ) {
 					foreach ( $patterns as $pat ) {
 						if ( @preg_match( $pat, $v ) ) {
-							$context[ $k ]    = '[REDACTED]';
+							$context[ $k ]  = '[REDACTED]';
 							$matched_pats[] = $pat;
 							break;
 						}

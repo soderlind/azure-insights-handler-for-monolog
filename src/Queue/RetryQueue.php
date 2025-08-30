@@ -1,14 +1,17 @@
 <?php
+declare(strict_types=1);
 namespace AzureInsightsWonolog\Queue;
 
 /**
  * Simple retry queue stored in a transient/option.
  */
 class RetryQueue {
-	private $option_key = 'aiw_retry_queue_v1';
-	private $schedule; // array of seconds delays
-	private $use_transient = false;
+	private string $option_key = 'aiw_retry_queue_v1';
+	/** @var int[] */
+	private array $schedule; // array of seconds delays
+	private bool $use_transient = false;
 
+	/** @param int[] $schedule */
 	public function __construct( array $schedule = [ 60, 300, 900, 3600 ] ) {
 		$this->schedule = $schedule;
 		// Opt-in to transient storage via constant AIW_RETRY_STORAGE = 'transient'.
@@ -45,7 +48,7 @@ class RetryQueue {
 		return $data;
 	}
 
-	private function save( array $queue ) {
+	private function save( array $queue ): void {
 		if ( $this->use_transient && function_exists( 'set_transient' ) ) {
 			set_transient( $this->option_key . '_t', $queue, 0 ); // no expiry; cron/backoff controls lifetime
 			// Maintain shadow option for durability & status display
@@ -60,7 +63,8 @@ class RetryQueue {
 		}
 	}
 
-	public function enqueue( array $batch ) {
+	/** @param array<int,array<string,mixed>> $batch */
+	public function enqueue( array $batch ): void {
 		$queue   = $this->load();
 		$queue[] = [ 
 			'batch'        => $batch,
@@ -86,7 +90,7 @@ class RetryQueue {
 		return $due;
 	}
 
-	public function mark_attempt( int $index, bool $success ) {
+	public function mark_attempt( int $index, bool $success ): void {
 		$queue = $this->load();
 		if ( ! isset( $queue[ $index ] ) )
 			return;

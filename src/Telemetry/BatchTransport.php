@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace AzureInsightsWonolog\Telemetry;
 
 /**
@@ -6,7 +7,7 @@ namespace AzureInsightsWonolog\Telemetry;
  * Keeps TelemetryClient focused on buffering & item construction.
  */
 class BatchTransport {
-	private $ingest_url;
+	private string $ingest_url;
 
 	public function __construct( string $ingest_url ) {
 		$this->ingest_url = $ingest_url ?: TelemetryClient::DEFAULT_INGEST_URL;
