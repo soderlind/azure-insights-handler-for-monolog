@@ -114,12 +114,24 @@ class Plugin {
 		$this->handler = new AzureInsightsHandler( $this->telemetry_client, $config, $level );
 
 		// Admin settings UI
-		if ( function_exists( 'is_admin' ) && is_admin() ) {
+		if ( function_exists( 'is_multisite' ) && is_multisite() ) {
+			// In multisite, expose settings only in network admin.
+			if ( function_exists( 'is_network_admin' ) && is_network_admin() ) {
+				if ( ! class_exists( Admin\NetworkSettingsPage::class ) ) {
+					// Attempt to load the class file if not autoloaded yet (PSR-4 should already handle it)
+				}
+				( new Admin\NetworkSettingsPage() )->register();
+				if ( $use_mock ) {
+					( new MockViewer() )->register();
+				}
+				( new RetryQueueViewer() )->register();
+				( new StatusPanel() )->register();
+			}
+		} elseif ( function_exists( 'is_admin' ) && is_admin() ) {
 			( new SettingsPage() )->register();
 			if ( $use_mock ) {
 				( new MockViewer() )->register();
 			}
-			// Retry queue viewer always available to admins
 			( new RetryQueueViewer() )->register();
 			( new StatusPanel() )->register();
 		}
@@ -169,7 +181,7 @@ class Plugin {
 	}
 
 	private function load_config(): array {
-		$getOpt   = function ($k, $d   = null) {
+		$getOpt = function ($k, $d = null) {
 			return function_exists( 'get_option' ) ? get_option( $k, $d ) : $d;
 		};
 		// Environment variable support (precedence: constant > env > option)
@@ -182,14 +194,21 @@ class Plugin {
 		if ( ! $env_ikey ) {
 			$env_ikey = getenv( 'APPLICATIONINSIGHTS_INSTRUMENTATION_KEY' );
 		}
+		// Helper to pull from site options if multisite
+		$siteOpt = function ($k, $d = null) {
+			if ( function_exists( 'is_multisite' ) && is_multisite() && function_exists( 'get_site_option' ) ) {
+				return get_site_option( $k, $d );
+			}
+			return $d;
+		};
 		$defaults = [ 
-			'connection_string'    => defined( 'AIW_CONNECTION_STRING' ) ? AIW_CONNECTION_STRING : ( ( is_string( $env_conn ) && $env_conn !== '' ) ? $env_conn : $getOpt( 'aiw_connection_string' ) ),
-			'instrumentation_key'  => defined( 'AIW_INSTRUMENTATION_KEY' ) ? AIW_INSTRUMENTATION_KEY : ( ( is_string( $env_ikey ) && $env_ikey !== '' ) ? $env_ikey : $getOpt( 'aiw_instrumentation_key' ) ),
-			'min_level'            => defined( 'AIW_MIN_LEVEL' ) ? AIW_MIN_LEVEL : ( $getOpt( 'aiw_min_level' ) ?: 'warning' ),
-			'sampling_rate'        => defined( 'AIW_SAMPLING_RATE' ) ? (float) AIW_SAMPLING_RATE : (float) ( $getOpt( 'aiw_sampling_rate', 1 ) ),
-			'batch_max_size'       => (int) $getOpt( 'aiw_batch_max_size', 20 ),
-			'batch_flush_interval' => (int) $getOpt( 'aiw_batch_flush_interval', 5 ),
-			'async_enabled'        => (bool) $getOpt( 'aiw_async_enabled', false ),
+			'connection_string'    => defined( 'AIW_CONNECTION_STRING' ) ? AIW_CONNECTION_STRING : ( ( is_string( $env_conn ) && $env_conn !== '' ) ? $env_conn : ( $siteOpt( 'aiw_connection_string' ) ?: $getOpt( 'aiw_connection_string' ) ) ),
+			'instrumentation_key'  => defined( 'AIW_INSTRUMENTATION_KEY' ) ? AIW_INSTRUMENTATION_KEY : ( ( is_string( $env_ikey ) && $env_ikey !== '' ) ? $env_ikey : ( $siteOpt( 'aiw_instrumentation_key' ) ?: $getOpt( 'aiw_instrumentation_key' ) ) ),
+			'min_level'            => defined( 'AIW_MIN_LEVEL' ) ? AIW_MIN_LEVEL : ( $siteOpt( 'aiw_min_level' ) ?: ( $getOpt( 'aiw_min_level' ) ?: 'warning' ) ),
+			'sampling_rate'        => defined( 'AIW_SAMPLING_RATE' ) ? (float) AIW_SAMPLING_RATE : (float) ( $siteOpt( 'aiw_sampling_rate', $getOpt( 'aiw_sampling_rate', 1 ) ) ),
+			'batch_max_size'       => (int) ( $siteOpt( 'aiw_batch_max_size' ) ?? $getOpt( 'aiw_batch_max_size', 20 ) ),
+			'batch_flush_interval' => (int) ( $siteOpt( 'aiw_batch_flush_interval' ) ?? $getOpt( 'aiw_batch_flush_interval', 5 ) ),
+			'async_enabled'        => (bool) ( $siteOpt( 'aiw_async_enabled' ) ?? $getOpt( 'aiw_async_enabled', false ) ),
 		];
 		// Decrypt if encrypted
 		if ( isset( $defaults[ 'connection_string' ] ) && \AzureInsightsWonolog\Security\Secrets::is_encrypted( $defaults[ 'connection_string' ] ) ) {
