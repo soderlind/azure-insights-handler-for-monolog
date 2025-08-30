@@ -172,7 +172,17 @@ class Plugin {
 			// Attempt Wonolog v3 integration: push handler onto the logger instance after Wonolog setup.
 			// Wonolog v3 (bundled) integration: push our handler directly. Legacy hook fallback removed (dependency enforces v3+).
 			if ( class_exists( '\\AzureInsightsWonolog\\Integration\\WonologIntegration' ) ) {
-				(new Integration\WonologIntegration( $this->handler ))->attach();
+				$integration = new Integration\WonologIntegration( $this->handler );
+				// Immediate attempt (may be a NullLogger early).
+				$integration->attach();
+				// Defer: once Wonolog finished setup ensure handler attached.
+				add_action( 'wonolog.loaded', function () use ( $integration ) {
+					$integration->attach();
+				}, PHP_INT_MAX );
+				// Late retry on init in case site loaded plugin before Wonolog fully bootstrapped (defensive).
+				add_action( 'init', function () use ( $integration ) {
+					$integration->attach();
+				}, 20 );
 			}
 			// Request telemetry on shutdown.
 			add_action( 'shutdown', [ $this, 'shutdown_flush' ], 9999 );
