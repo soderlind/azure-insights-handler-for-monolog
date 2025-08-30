@@ -113,21 +113,36 @@ class Plugin {
 		$level         = $this->convert_min_level_to_monolog( $config[ 'min_level' ] );
 		$this->handler = new AzureInsightsHandler( $this->telemetry_client, $config, $level );
 
-		// Admin settings UI
+		// Admin settings UI handling (single-site vs multisite + network activation logic)
 		if ( function_exists( 'is_multisite' ) && is_multisite() ) {
-			// In multisite, expose settings only in network admin.
-			if ( function_exists( 'is_network_admin' ) && is_network_admin() ) {
-				if ( ! class_exists( Admin\NetworkSettingsPage::class ) ) {
-					// Attempt to load the class file if not autoloaded yet (PSR-4 should already handle it)
+			$network_active = false;
+			if ( defined( 'AIW_PLUGIN_FILE' ) && function_exists( 'plugin_basename' ) && function_exists( 'is_plugin_active_for_network' ) ) {
+				$basename       = plugin_basename( AIW_PLUGIN_FILE );
+				$network_active = is_plugin_active_for_network( $basename );
+			}
+			if ( $network_active ) {
+				// When network-activated: suppress per-site page, expose only a network settings page in network admin.
+				if ( function_exists( 'is_network_admin' ) && is_network_admin() ) {
+					( new Admin\NetworkSettingsPage() )->register();
+					if ( $use_mock ) {
+						( new MockViewer() )->register();
+					}
+					( new RetryQueueViewer() )->register();
+					( new StatusPanel() )->register();
 				}
-				( new Admin\NetworkSettingsPage() )->register();
-				if ( $use_mock ) {
-					( new MockViewer() )->register();
+			} else {
+				// Multisite but NOT network-activated: behave like normal per-site activation.
+				if ( function_exists( 'is_admin' ) && is_admin() && ( ! function_exists( 'is_network_admin' ) || ! is_network_admin() ) ) {
+					( new SettingsPage() )->register();
+					if ( $use_mock ) {
+						( new MockViewer() )->register();
+					}
+					( new RetryQueueViewer() )->register();
+					( new StatusPanel() )->register();
 				}
-				( new RetryQueueViewer() )->register();
-				( new StatusPanel() )->register();
 			}
 		} elseif ( function_exists( 'is_admin' ) && is_admin() ) {
+			// Single-site install: always show per-site settings page.
 			( new SettingsPage() )->register();
 			if ( $use_mock ) {
 				( new MockViewer() )->register();
@@ -195,7 +210,7 @@ class Plugin {
 			$env_ikey = getenv( 'APPLICATIONINSIGHTS_INSTRUMENTATION_KEY' );
 		}
 		// Helper to pull from site options if multisite
-		$siteOpt = function ($k, $d = null) {
+		$siteOpt  = function ($k, $d  = null) {
 			if ( function_exists( 'is_multisite' ) && is_multisite() && function_exists( 'get_site_option' ) ) {
 				return get_site_option( $k, $d );
 			}

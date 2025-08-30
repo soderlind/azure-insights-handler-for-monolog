@@ -5,12 +5,23 @@ class SettingsPage {
 	const OPTION_GROUP = 'aiw_settings';
 	const PAGE_SLUG    = 'azure-insights-wonolog';
 
+	/** @var array<string,bool> */
+	private array $page_hooks = [];
+
 	public function register() {
 		if ( ! function_exists( 'add_menu_page' ) )
 			return;
 		if ( function_exists( 'add_action' ) ) {
 			add_action( 'admin_menu', [ $this, 'menu' ] );
 			add_action( 'admin_init', [ $this, 'settings' ] );
+			// Enqueue assets only on our pages
+			add_action( 'admin_enqueue_scripts', function ($hook) {
+				if ( isset( $this->page_hooks[ $hook ] ) ) {
+					if ( function_exists( 'wp_enqueue_style' ) ) {
+						wp_enqueue_style( 'aiw-admin', defined( 'AIW_PLUGIN_URL' ) ? AIW_PLUGIN_URL . 'assets/css/aiw-admin.css' : '', [], defined( 'AIW_PLUGIN_VERSION' ) ? AIW_PLUGIN_VERSION : '1.0' );
+					}
+				}
+			} );
 			// Generic help tab loader for top-level + subpages.
 			add_action( 'current_screen', function () {
 				$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
@@ -235,24 +246,33 @@ class SettingsPage {
 		if ( ! function_exists( 'add_menu_page' ) || ! function_exists( 'add_submenu_page' ) )
 			return;
 		// Top-level page (Status default)
-		add_menu_page( 'Azure Insights', 'Azure Insights', 'manage_options', self::PAGE_SLUG, [ $this, 'render' ], 'dashicons-chart-area', 60 );
+		$top = add_menu_page( 'Azure Insights', 'Azure Insights', 'manage_options', self::PAGE_SLUG, [ $this, 'render' ], 'dashicons-chart-area', 60 );
+		if ( is_string( $top ) ) {
+			$this->page_hooks[ $top ] = true;
+		}
 		$subtabs = [ 
 			self::PAGE_SLUG . '-status' => [ 'Status', 'status' ],
 			self::PAGE_SLUG . '-connection' => [ 'Connection', 'connection' ],
 			self::PAGE_SLUG . '-behavior' => [ 'Behavior', 'behavior' ],
 			self::PAGE_SLUG . '-redaction' => [ 'Redaction', 'redaction' ],
+			self::PAGE_SLUG . '-test' => [ 'Test Telemetry', 'test' ],
 		];
 		foreach ( $subtabs as $slug => $meta ) {
 			list( $label, $tab ) = $meta;
-			add_submenu_page( self::PAGE_SLUG, $label, $label, 'manage_options', $slug, function () use ($tab) {
+			$hook                = add_submenu_page( self::PAGE_SLUG, $label, $label, 'manage_options', $slug, function () use ($tab) {
 				$this->render( $tab );
 			} );
+			if ( is_string( $hook ) ) {
+				$this->page_hooks[ $hook ] = true;
+			}
 		}
 	}
 
 	public function settings() {
-		if ( ! function_exists( 'register_setting' ) )
-			return; // outside WP
+		if ( ! function_exists( 'register_setting' ) ) {
+			return; // outside WP runtime
+		}
+		// Register stored options
 		register_setting( self::OPTION_GROUP, 'aiw_connection_string' );
 		register_setting( self::OPTION_GROUP, 'aiw_instrumentation_key', [ 'sanitize_callback' => [ $this, 'sanitize_instrumentation_key' ] ] );
 		register_setting( self::OPTION_GROUP, 'aiw_use_mock' );
@@ -269,94 +289,77 @@ class SettingsPage {
 		register_setting( self::OPTION_GROUP, 'aiw_enable_internal_diagnostics' );
 		register_setting( self::OPTION_GROUP, 'aiw_async_enabled' );
 
-		// Primary section
-		if ( ! function_exists( 'add_settings_section' ) || ! function_exists( 'add_settings_field' ) )
-			return;
+		if ( ! function_exists( 'add_settings_section' ) || ! function_exists( 'add_settings_field' ) ) {
+			return; // cannot render sections in this context
+		}
+
+		// Main section (connection)
 		add_settings_section( 'aiw_main', 'Azure Application Insights', function () {
-			echo '<p>Core connection & behavior. Connection String (recommended) overrides individual legacy instrumentation key if both are present.</p>';
+			echo '<p>Core connection & behavior. Connection String (recommended) overrides legacy instrumentation key if both are present.</p>';
 		}, self::PAGE_SLUG );
 
-		// Field: Mock Mode
+		// Mock Mode toggle
 		add_settings_field( 'aiw_use_mock', 'Mock Mode', function () {
 			$val     = function_exists( 'get_option' ) ? (int) get_option( 'aiw_use_mock', 0 ) : 0;
 			$checked = function_exists( 'checked' ) ? checked( 1, $val, false ) : ( $val ? 'checked' : '' );
 			echo '<label><input type="checkbox" name="aiw_use_mock" value="1" ' . $checked . ' /> Enable (no HTTP) – inspect telemetry locally.</label>';
 		}, self::PAGE_SLUG, 'aiw_main' );
 
-		// Field: Connection String
+		// Connection String field (masked if encrypted)
 		add_settings_field( 'aiw_connection_string', 'Connection String', function () {
-			$raw = function_exists( 'get_option' ) ? get_option( 'aiw_connection_string', '' ) : '';
-			// Mask encrypted values visually
-			if ( \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw ) ) {
-				$display = '******** (encrypted)';
-			} else {
-				$display = $raw;
-			}
-			$val = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
+			$raw     = function_exists( 'get_option' ) ? get_option( 'aiw_connection_string', '' ) : '';
+			$display = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw ) ? '******** (encrypted)' : $raw;
+			$val     = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
 			echo '<input type="text" name="aiw_connection_string" value="' . $val . '" class="regular-text code" placeholder="InstrumentationKey=...;IngestionEndpoint=https://..." autocomplete="off" />';
-			echo '<p class="description">Paste full connection string from Azure Portal &ldquo;Connection String&rdquo; blade.</p>';
+			echo '<p class="description">Paste full connection string from Azure Portal.</p>';
 		}, self::PAGE_SLUG, 'aiw_main' );
 
-		// Field: Instrumentation Key (legacy)
+		// Legacy instrumentation key
 		add_settings_field( 'aiw_instrumentation_key', 'Instrumentation Key (legacy)', function () {
-			$raw = function_exists( 'get_option' ) ? get_option( 'aiw_instrumentation_key', '' ) : '';
-			if ( \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw ) ) {
-				$display = '******** (encrypted)';
-			} else {
-				$display = $raw;
-			}
-			$val = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
+			$raw     = function_exists( 'get_option' ) ? get_option( 'aiw_instrumentation_key', '' ) : '';
+			$display = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw ) ? '******** (encrypted)' : $raw;
+			$val     = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
 			echo '<input type="text" name="aiw_instrumentation_key" value="' . $val . '" class="regular-text code" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" />';
-			echo '<p class="description">Deprecated. Provide only if not using Connection String.</p>';
+			echo '<p class="description">Deprecated. Provide only if not using a Connection String.</p>';
 		}, self::PAGE_SLUG, 'aiw_main' );
 
-		// Behavior subsection (visual grouping)
+		// Behavior section
 		add_settings_section( 'aiw_behavior', 'Behavior & Performance', function () {
 			echo '<p>Control verbosity, sampling and batching. Errors bypass sampling automatically.</p>';
 		}, self::PAGE_SLUG );
 
-		// Minimum level select
 		add_settings_field( 'aiw_min_level', 'Minimum Log Level', function () {
 			$current = function_exists( 'get_option' ) ? get_option( 'aiw_min_level', 'info' ) : 'info';
 			$levels  = [ 'debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency' ];
 			echo '<select name="aiw_min_level">';
 			foreach ( $levels as $lvl ) {
-				$sel = ( $lvl === $current ) ? 'selected' : '';
-				$lab = ucfirst( $lvl );
-				echo '<option value="' . htmlspecialchars( $lvl, ENT_QUOTES, 'UTF-8' ) . '" ' . $sel . '>' . htmlspecialchars( $lab, ENT_QUOTES, 'UTF-8' ) . '</option>';
+				$sel = $lvl === $current ? 'selected' : '';
+				echo '<option value="' . htmlspecialchars( $lvl, ENT_QUOTES, 'UTF-8' ) . '" ' . $sel . '>' . ucfirst( htmlspecialchars( $lvl, ENT_QUOTES, 'UTF-8' ) ) . '</option>';
 			}
-			echo '</select>';
-			echo '<p class="description">Events below this level are ignored before sampling.</p>';
+			echo '</select><p class="description">Events below this level are ignored before sampling.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
 
-		// Sampling rate slider + number
 		add_settings_field( 'aiw_sampling_rate', 'Sampling Rate', function () {
 			$val = function_exists( 'get_option' ) ? get_option( 'aiw_sampling_rate', '1' ) : '1';
 			$val = is_numeric( $val ) ? $val : '1';
-			$v   = htmlspecialchars( $val, ENT_QUOTES, 'UTF-8' );
-			echo '<input type="range" min="0" max="1" step="0.01" value="' . $v . '" oninput="this.nextElementSibling.value=this.value" name="aiw_sampling_rate" style="width:220px;" aria-label="Sampling rate slider">';
-			echo '<input type="number" min="0" max="1" step="0.01" value="' . $v . '" oninput="this.previousElementSibling.value=this.value" style="width:70px;margin-left:8px;" aria-label="Sampling rate value">';
+			echo '<input type="range" min="0" max="1" step="0.01" value="' . htmlspecialchars( $val, ENT_QUOTES, 'UTF-8' ) . '" oninput="this.nextElementSibling.value=this.value" name="aiw_sampling_rate" style="width:220px;">';
+			echo '<input type="number" min="0" max="1" step="0.01" value="' . htmlspecialchars( $val, ENT_QUOTES, 'UTF-8' ) . '" oninput="this.previousElementSibling.value=this.value" style="width:70px;margin-left:8px;">';
 			echo '<p class="description">Fraction of non-error traces/requests to send (1 = all).</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
 
-		// Feature toggles as separate field
 		add_settings_field( 'aiw_feature_toggles', 'Feature Toggles', function () {
 			$perf   = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_performance', 1 ) : 1;
 			$events = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_events_api', 1 ) : 1;
 			$diag   = function_exists( 'get_option' ) ? (int) get_option( 'aiw_enable_internal_diagnostics', 0 ) : 0;
-
-			$render_checkbox = function ($name, $label, $val, $description = '') {
+			$cb     = function ($name, $label, $val, $desc     = '') {
 				$checked = $val ? 'checked' : '';
-				$id = 'aiw_' . str_replace( 'aiw_', '', $name );
-				echo '<label style="display:block;margin:4px 0;"><input type="checkbox" id="' . $id . '" name="' . $name . '" value="1" ' . $checked . ' /> ' . $label . '</label>';
-				if ( $description ) {
-					echo '<p class="description" style="margin-left:20px;margin-top:2px;color:#666;">' . $description . '</p>';
-				}
+				echo '<label style="display:block;margin:4px 0;"><input type="checkbox" name="' . $name . '" value="1" ' . $checked . ' /> ' . $label . '</label>';
+				if ( $desc )
+					echo '<p class="description" style="margin-left:20px;margin-top:2px;color:#666;">' . $desc . '</p>';
 			};
-
-			$render_checkbox( 'aiw_enable_performance', 'Performance Metrics', $perf, 'Hook duration, slow queries, cron timing' );
-			$render_checkbox( 'aiw_enable_events_api', 'Custom Events & Metrics API', $events, 'aiw_event() and aiw_metric() helper functions' );
-			$render_checkbox( 'aiw_enable_internal_diagnostics', 'Internal Diagnostics', $diag, 'Debug logging to error_log' );
+			$cb( 'aiw_enable_performance', 'Performance Metrics', $perf, 'Hook duration, slow queries, cron timing' );
+			$cb( 'aiw_enable_events_api', 'Custom Events & Metrics API', $events, 'aiw_event() and aiw_metric() helpers' );
+			$cb( 'aiw_enable_internal_diagnostics', 'Internal Diagnostics', $diag, 'Debug logging to error_log' );
 			echo '<p class="description" style="margin-top:8px;">Disable unused subsystems to reduce overhead.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
 
@@ -379,21 +382,19 @@ class SettingsPage {
 			echo '<p class="description">Batches queued & sent shortly by aiw_async_flush cron. Use filter aiw_before_send_batch to mutate lines.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
 
-		// Slow hook threshold (ms) configuration (future use by performance collector)
 		add_settings_field( 'aiw_slow_hook_threshold_ms', 'Slow Hook Threshold (ms)', function () {
 			$val = function_exists( 'get_option' ) ? (int) get_option( 'aiw_slow_hook_threshold_ms', 150 ) : 150;
 			echo '<input type="number" min="10" name="aiw_slow_hook_threshold_ms" value="' . (int) $val . '" style="width:90px;" />';
 			echo '<p class="description">Record hook_duration_ms metrics only when duration exceeds this threshold.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
 
-		// Slow DB query threshold (ms)
 		add_settings_field( 'aiw_slow_query_threshold_ms', 'Slow Query Threshold (ms)', function () {
 			$val = function_exists( 'get_option' ) ? (int) get_option( 'aiw_slow_query_threshold_ms', 500 ) : 500;
 			echo '<input type="number" min="10" name="aiw_slow_query_threshold_ms" value="' . (int) $val . '" style="width:90px;" />';
 			echo '<p class="description">Emit db_slow_query_ms metrics for queries ≥ this duration (SAVEQUERIES required). Also counts db_slow_query_count.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
 
-		// Diagnostics / status section (read-only)
+		// Runtime status section (read-only list)
 		add_settings_section( 'aiw_status', 'Runtime Status', function () {
 			$status = $this->runtime_status();
 			echo '<ul style="margin-left:1em;list-style:disc">';
@@ -403,15 +404,9 @@ class SettingsPage {
 				echo '<li><strong>' . $l . ':</strong> ' . $v . '</li>';
 			}
 			echo '</ul>';
-			$useMock = function_exists( 'get_option' ) ? get_option( 'aiw_use_mock' ) : false;
-			if ( $useMock && function_exists( 'admin_url' ) ) {
-				$url = admin_url( 'options-general.php?page=aiw-mock-telemetry' );
-				$url = function_exists( 'esc_url' ) ? esc_url( $url ) : htmlspecialchars( $url, ENT_QUOTES, 'UTF-8' );
-				echo '<p><a class="button" href="' . $url . '">Open Mock Telemetry Viewer</a></p>';
-			}
 		}, self::PAGE_SLUG );
 
-		// Redaction / Diagnostics section
+		// Privacy / redaction section
 		add_settings_section( 'aiw_privacy', 'Redaction & Diagnostics', function () {
 			echo '<p>Configure additional sensitive keys and regex patterns to redact from telemetry context. Test telemetry sends a sample trace, event, metric, and (if error chosen) exception.</p>';
 		}, self::PAGE_SLUG );
@@ -426,25 +421,8 @@ class SettingsPage {
 		add_settings_field( 'aiw_redact_patterns', 'Regex Redact Patterns', function () {
 			$raw = function_exists( 'get_option' ) ? get_option( 'aiw_redact_patterns', '' ) : '';
 			$val = function_exists( 'esc_textarea' ) ? esc_textarea( $raw ) : htmlspecialchars( $raw, ENT_QUOTES, 'UTF-8' );
-			echo '<textarea name="aiw_redact_patterns" rows="3" class="large-text" placeholder="/(?:bearer)\s+[a-z0-9\-\._]+/i,/[0-9]{16}/">' . $val . '</textarea>';
+			echo '<textarea name="aiw_redact_patterns" rows="3" class="large-text" placeholder="/(?:bearer)\\s+[a-z0-9\\-\\._]+/i,/[0-9]{16}/">' . $val . '</textarea>';
 			echo '<p class="description">Comma-separated PCRE patterns. Any matching values will be replaced with [REDACTED]. Use cautiously for performance.</p>';
-		}, self::PAGE_SLUG, 'aiw_privacy' );
-
-		add_settings_field( 'aiw_test_telemetry', 'Send Test Telemetry', function () {
-			if ( ! function_exists( 'wp_nonce_field' ) ) {
-				echo '<p>WordPress context unavailable.</p>';
-				return;
-			}
-			echo '<form method="post" action="" style="margin:0;">';
-			wp_nonce_field( 'aiw_send_test_telemetry', 'aiw_test_nonce' );
-			echo '<select name="aiw_test_kind"><option value="info">Info Trace</option><option value="error">Error + Exception</option></select> ';
-			echo '<button class="button">Send</button>';
-			echo '<input type="hidden" name="aiw_send_test" value="1" />';
-			echo '</form>';
-			if ( isset( $_GET[ 'aiw_test_sent' ] ) ) {
-				$ok = intval( $_GET[ 'aiw_test_sent' ] ) === 1;
-				echo '<p style="margin-top:8px;" class="' . ( $ok ? 'description' : 'error' ) . '">' . ( $ok ? 'Test telemetry dispatched.' : 'Test telemetry failed.' ) . '</p>';
-			}
 		}, self::PAGE_SLUG, 'aiw_privacy' );
 	}
 
@@ -503,7 +481,7 @@ class SettingsPage {
 	}
 
 	private function get_active_tab( $forced_tab ) {
-		$tabs       = [ 'status', 'connection', 'behavior', 'redaction' ];
+		$tabs       = [ 'status', 'connection', 'behavior', 'redaction', 'test' ];
 		$active_tab = $forced_tab ? $forced_tab : ( isset( $_GET[ 'tab' ] ) ? sanitize_key( $_GET[ 'tab' ] ) : 'status' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		return in_array( $active_tab, $tabs ) ? $active_tab : 'status';
 	}
@@ -514,68 +492,10 @@ class SettingsPage {
 			'connection' => [ 'Connection', 'dashicons-admin-links' ],
 			'behavior'   => [ 'Behavior', 'dashicons-admin-settings' ],
 			'redaction'  => [ 'Redaction & Diagnostics', 'dashicons-privacy' ],
+			'test'       => [ 'Test Telemetry', 'dashicons-controls-repeat' ],
 		];
 		$active_tab = $this->get_active_tab( $forced_tab );
 		$base_url   = function_exists( 'admin_url' ) ? admin_url( 'admin.php?page=' . self::PAGE_SLUG ) : '?page=' . self::PAGE_SLUG;
-
-		echo '<style>
-		.aiw-modern-nav {
-			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-			border-radius: 8px;
-			padding: 0;
-			margin: 20px 0;
-			box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-			overflow: hidden;
-		}
-		
-		.aiw-modern-nav .nav-tab {
-			background: transparent;
-			border: none;
-			color: rgba(255,255,255,0.8);
-			padding: 16px 24px;
-			margin: 0;
-			text-decoration: none;
-			font-weight: 500;
-			transition: all 0.3s ease;
-			display: inline-flex;
-			align-items: center;
-			gap: 8px;
-			border-radius: 0;
-		}
-		
-		.aiw-modern-nav .nav-tab:hover {
-			color: #ffffff;
-			background: rgba(255,255,255,0.1);
-		}
-		
-		.aiw-modern-nav .nav-tab.nav-tab-active {
-			background: rgba(255,255,255,0.2);
-			color: #ffffff;
-			box-shadow: inset 0 -3px 0 #ffffff;
-		}
-		
-		.aiw-modern-nav .nav-tab .dashicons {
-			font-size: 16px;
-			width: 16px;
-			height: 16px;
-		}
-		
-		.aiw-intro {
-			background: #f8f9fa;
-			border: 1px solid #e9ecef;
-			border-radius: 6px;
-			padding: 16px 20px;
-			margin: 20px 0;
-			color: #495057;
-			font-size: 14px;
-			line-height: 1.5;
-		}
-		
-		.aiw-intro::before {
-			content: "ℹ️";
-			margin-right: 8px;
-		}
-		</style>';
 
 		echo '<h2 class="nav-tab-wrapper aiw-modern-nav">';
 		foreach ( $tabs as $slug => $meta ) {
@@ -603,6 +523,9 @@ class SettingsPage {
 				break;
 			case 'redaction':
 				$this->render_redaction_tab();
+				break;
+			case 'test':
+				$this->render_test_tab();
 				break;
 		}
 	}
@@ -645,9 +568,6 @@ class SettingsPage {
 			submit_button();
 		}
 		echo '</form>';
-
-		// Test telemetry form (separate from settings)
-		$this->render_test_telemetry_form();
 	}
 
 
@@ -780,132 +700,7 @@ class SettingsPage {
 	}
 
 	private function render_connection_fields() {
-		echo '<style>
-		.aiw-form-card {
-			background: #ffffff;
-			border: 1px solid #e0e0e0;
-			border-radius: 12px;
-			padding: 24px;
-			margin: 20px 0;
-			box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-			max-width: 900px;
-		}
-		
-		.aiw-form-card h2 {
-			margin: 0 0 20px;
-			font-size: 20px;
-			font-weight: 600;
-			color: #1d2327;
-			display: flex;
-			align-items: center;
-			gap: 12px;
-		}
-		
-		.aiw-form-card h2::before {
-			content: "";
-			width: 32px;
-			height: 32px;
-			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-			border-radius: 8px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-		
-		.aiw-form-table {
-			width: 100%;
-			border-collapse: separate;
-			border-spacing: 0;
-		}
-		
-		.aiw-form-table tr {
-			border-bottom: 1px solid #f0f0f1;
-		}
-		
-		.aiw-form-table tr:last-child {
-			border-bottom: none;
-		}
-		
-		.aiw-form-table th {
-			width: 200px;
-			padding: 16px 0;
-			text-align: left;
-			font-weight: 500;
-			color: #1d2327;
-			vertical-align: top;
-		}
-		
-		.aiw-form-table td {
-			padding: 16px 0 16px 20px;
-			vertical-align: top;
-		}
-		
-		.aiw-input-group {
-			display: flex;
-			flex-direction: column;
-			gap: 8px;
-		}
-		
-		.aiw-input {
-			border: 2px solid #e0e0e0;
-			border-radius: 6px;
-			padding: 12px 16px;
-			font-size: 14px;
-			transition: all 0.2s ease;
-			font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
-		}
-		
-		.aiw-input:focus {
-			outline: none;
-			border-color: #667eea;
-			box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-		}
-		
-		.aiw-checkbox-wrapper {
-			display: flex;
-			align-items: center;
-			gap: 12px;
-			padding: 12px 16px;
-			background: #f8f9fa;
-			border-radius: 8px;
-			border: 2px solid transparent;
-			transition: all 0.2s ease;
-		}
-		
-		.aiw-checkbox-wrapper:hover {
-			background: #e9ecef;
-		}
-		
-		.aiw-checkbox-wrapper input[type="checkbox"] {
-			width: 18px;
-			height: 18px;
-			accent-color: #667eea;
-		}
-		
-		.aiw-description {
-			color: #646970;
-			font-size: 13px;
-			line-height: 1.4;
-			margin-top: 8px;
-		}
-		
-		.aiw-status-indicator {
-			display: inline-flex;
-			align-items: center;
-			gap: 6px;
-			padding: 4px 8px;
-			border-radius: 12px;
-			font-size: 11px;
-			font-weight: 600;
-			text-transform: uppercase;
-		}
-		
-		.aiw-status-indicator.encrypted {
-			background: #e7f7ed;
-			color: #185b37;
-		}
-		</style>';
-
+		// Styles moved to external CSS (aiw-admin.css)
 		echo '<div class="aiw-form-card">';
 		echo '<h2>🔗 Connection Settings</h2>';
 		echo '<table class="aiw-form-table" role="presentation">';
@@ -1171,5 +966,10 @@ class SettingsPage {
 			echo '</div>';
 		}
 		echo '</div>';
+	}
+
+	private function render_test_tab() {
+		echo '<p class="aiw-intro">Send sample telemetry payloads to verify pipeline configuration without altering other settings.</p>';
+		$this->render_test_telemetry_form();
 	}
 }
