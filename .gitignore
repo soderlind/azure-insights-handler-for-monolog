@@ -1,0 +1,28 @@
+# OS / Editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Composer cache / vendor bin symlinks (keep vendor committed for WP distribution)
+# If you prefer to exclude vendor, uncomment the next line and run: git rm -r --cached vendor
+# /vendor/
+
+# PHPUnit artifacts
+.phpunit.result.cache
+coverage/
+/build/
+/testdox_output.txt
+
+# Logs / temp
+*.log
+*.tmp
+
+# Node (if added later)
+node_modules/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
