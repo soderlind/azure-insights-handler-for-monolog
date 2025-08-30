@@ -38,6 +38,16 @@ spl_autoload_register( function ($class) {
 	}
 } );
 
+
+$additional_javascript_updater = AzureInsightsWonolog\Updater\GitHubPluginUpdater::create_with_assets(
+	'https://github.com/soderlind/azure-insights-handler-for-wonolog',
+	AIW_PLUGIN_FILE,
+	'azure-insights-handler-for-wonolog',
+	'/azure-insights-handler-for-wonolog\.zip/',
+	'main'
+);
+
+
 // Activation / Deactivation hooks.
 register_activation_hook( __FILE__, function () {
 	if ( class_exists( 'AzureInsightsWonolog\\Plugin' ) ) {
