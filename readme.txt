@@ -1,4 +1,4 @@
-=== Azure Insights Handler for Wonolog ===
+=== Azure Insights Handler for Monolog ===
 Contributors: persoderlind
 Tags: azure, application insights, logging, telemetry, monitoring
 Requires at least: 6.5
@@ -8,10 +8,10 @@ Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Integrates Wonolog (Monolog) with Azure Application Insights providing structured telemetry, sampling, redaction, retry queue, async batching, and an admin status dashboard.
+Forwards Monolog logs and custom telemetry (traces, requests, exceptions, events, metrics) to Azure Application Insights with sampling, redaction, retry queue, async batching, and an admin status dashboard.
 
 == Description ==
-This plugin bridges your WordPress (and Wonolog / Monolog) logging + custom operational metrics to **Azure Application Insights**.
+This plugin bridges your WordPress (Monolog) logging + custom operational metrics to **Azure Application Insights**.
 
 It batches & sends traces, requests, exceptions, events, and custom metrics with optional adaptive sampling, advanced redaction, a resilient retry queue (including transient storage mode), async cron dispatch, correlation headers, and a native WordPress status dashboard.
 
@@ -33,7 +33,7 @@ Key features:
 Filters let you alter sampling, redaction, correlation, and mutate batches pre-send.
 
 == Installation ==
-1. Upload or clone into `wp-content/plugins/azure-insights-handler-for-wonolog`.
+1. Upload or clone into `wp-content/plugins/azure-insights-handler-for-monolog`.
 2. Activate the plugin.
 3. In Azure create / locate an Application Insights resource and copy its Connection String.
 4. Open: Azure Insights (top-level admin menu) → Settings. Paste Connection String (preferred) or Instrumentation Key.
@@ -47,7 +47,7 @@ define( 'AIW_CONNECTION_STRING', 'InstrumentationKey=...;IngestionEndpoint=...' 
 == Frequently Asked Questions ==
 
 = Do I need the Wonolog plugin? =
-Recommended for seamless Monolog integration, but Monolog availability (via another source) is sufficient.
+No. Direct Monolog loading via Composer is sufficient; Wonolog is no longer required. A deprecated loader file is included only for backward compatibility with old paths.
 
 = How do I change the sampling rate dynamically? =
 Adjust in settings UI or override per-record with filter `aiw_should_sample`.

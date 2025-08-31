@@ -1,11 +1,11 @@
-# Azure Insights Handler for Wonolog — Design Document
+# Azure Insights Handler for Monolog — Design Document
 
 ## 1. Goal
-Provide a robust, configurable WordPress plugin that augments Wonolog logging by forwarding enriched log, trace, and performance telemetry to Azure Application Insights, enabling observability (logs, traces, metrics, correlation) without materially impacting page performance.
+Provide a robust, configurable WordPress plugin that augments Monolog logging by forwarding enriched log, trace, and performance telemetry to Azure Application Insights, enabling observability (logs, traces, metrics, correlation) without materially impacting page performance.
 
 ## 2. Scope Summary
 In-scope:
-- Monolog / Wonolog handler that ships records to Azure Application Insights
+- Monolog handler that ships records to Azure Application Insights
 - Correlated request + background task telemetry
 - Custom log level mapping & threshold filtering
 - Structured context & extra fields → customDimensions
@@ -46,20 +46,20 @@ Adjustments made: Added admin config, sampling, batching, retry, health status, 
 
 ## 4. Architecture Overview
 Components:
-- Service Provider (bootstrap) hooking into WordPress & Wonolog
+- Service Provider (bootstrap) hooking into WordPress & Monolog (via direct handler registration or legacy Wonolog triggers when present)
 - Monolog Handler: `AzureInsightsHandler` (extends `Monolog\Handler\AbstractProcessingHandler`)
 - Telemetry Client Abstraction: wraps Application Insights ingestion (Connection String or Instrumentation Key)
 - Queue / Buffer: in-memory + transient/option based fallback for retry
 - Correlation Manager: manages trace/span IDs, reads/writes headers
 - Performance Collector: times selected WP hooks (init, template_redirect, shutdown), collects DB query stats (if SAVEQUERIES), memory usage
 - Admin UI Module: settings page + validation + capability checks
-- Event API facade functions (imperative helpers)
+Provide a robust, configurable WordPress plugin that forwards enriched Monolog log, trace, and performance telemetry to Azure Application Insights, enabling observability (logs, traces, metrics, correlation) without materially impacting page performance.
 - Cron / Scheduler: processes retry queue & flushes aged batches
 - CLI Commands: leverage WP-CLI if available
 
-Data Flow:
+- Monolog handler that ships records to Azure Application Insights
 1. Request enters WordPress → Correlation Manager establishes trace context → start timer.
-2. Wonolog emits log (Monolog record) → Handler maps & enqueues telemetry item (trace + customDimensions, severity).
+2. Monolog emits log (record) → Handler maps & enqueues telemetry item (trace + customDimensions, severity).
 3. Performance Collector records metrics (on shutdown) and emits Request + Metric telemetry.
 4. Shutdown: buffer flushed (async HTTP). Failures stored for cron retry.
 
@@ -75,22 +75,12 @@ Data Flow:
 | Security | Redact configurable keys before send | Compliance |
 | Error Handling | Exponential backoff (1m, 5m, 15m, 1h) with max attempts | Prevent hammering |
 | Extensibility | Actions/filters: `aiw_before_send_batch`, `aiw_enrich_dimensions` | Plugin ecosystem support |
-| Logging Self | Internal diagnostics use existing Wonolog at DEBUG but behind feature flag | Avoid recursion & loops |
+| Logging Self | Internal diagnostics use existing Monolog at DEBUG but behind feature flag | Avoid recursion & loops |
 
 ## 6. Dependencies
 Composer (planned):
-- monolog/monolog (already via Wonolog)
+- monolog/monolog
 - (Optional) psr/log (if not bundled)
-- (Optional) guzzlehttp/guzzle (consider using WP HTTP API instead to avoid overhead) — initial plan: NO external HTTP client.
-- ramsey/uuid (optional) — may implement lightweight random hex generator instead.
-
-Goal: Minimize third-party libs; rely on core + Wonolog.
-
-## 7. Telemetry Mapping
-Monolog → Application Insights Types:
-- Log records → Trace telemetry
-- Exception stack → Exception telemetry (if `context['exception']` instance of Throwable)
-- Metrics API (custom) → Metric telemetry
 - Performance (request) → Request telemetry
 
 Level Mapping (Monolog -> AI SeverityLevel):
@@ -108,73 +98,27 @@ Dimensions (customDimensions) baseline:
 - request_method, request_uri, status_code
 - sampling_rate
 
-## 8. Correlation Strategy
-- Accept inbound `traceparent` header (W3C). If present: parse trace-id & parent-id; create new span-id for request.
-- If absent: generate 16-byte trace-id (hex) & span-id.
-- Expose helper functions and filter `aiw_correlation_headers` for outgoing calls.
 - Optionally inject `traceparent` header into `wp_remote_request` via filter if enabled (future iteration – flagged).
 
 ## 9. Performance Metrics
 Collected at shutdown:
 - Total request duration
-- Memory peak (bytes)
-- DB query count & total time (if SAVEQUERIES)
-- Slow hook durations (tracked via `add_action` wrapper list) over threshold (e.g., > 150ms)
-- WP Cron task durations when running in cron context
 
 Metrics emission:
-- Each metric as separate telemetry item (Metric type)
-- Aggregate in batch flush
-
-## 10. Configuration Model
-
-- `connection_string` (string)
 - `instrumentation_key` (fallback if connection string absent)
 - `min_level` (string; default `warning`)
-- `sampling_rate` (float 0..1; default 1)
-- `enable_performance` (bool)
-- `enable_events_api` (bool)
-- `enable_internal_diagnostics` (bool)
-- `redact_keys` (array) default `[ 'password', 'pwd', 'pass', 'email', 'user_email' ]`
 - `slow_hook_threshold_ms` (int) default 150
 - `batch_max_size` (int) default 20
-- `batch_flush_interval` (int seconds) default 5
-- `retry_schedule` (array) default `[60,300,900,3600]`
-
-Constants override (if defined in wp-config):
 - `AIW_CONNECTION_STRING`
 - `AIW_INSTRUMENTATION_KEY`
 - `AIW_MIN_LEVEL`
-- `AIW_SAMPLING_RATE`
-
-## 11. Public API (Initial)
-Functions:
-```php
 event( string $name, array $properties = [], array $measurements = [] );
 metric( string $name, float $value, array $properties = [] );
-current_trace_id(): ?string;
-current_span_id(): ?string;
 ```
 Filters / Actions:
 - `aiw_enrich_dimensions` (array $dimensions, array $record)
-- `aiw_before_send_batch` (array $payload)
-- `aiw_should_sample` (bool $decision, array $record)
-- `aiw_redact_keys` (array $keys)
-
-## 12. Error & Retry Handling
-- Transport returns HTTP status; non-2xx queued.
-- Queue persistence: transient `aiw_retry_queue` containing array of batches with metadata (attempt count, next_attempt_timestamp).
-- Cron event `aiw_process_retry_queue` scheduled on activation; processes due batches.
-- Max attempts: length of retry schedule; after that, drop & emit internal diagnostic.
-
-## 13. Data Privacy & Security
-- Redact configured keys from context/extra arrays.
 - Hash user identifiers with SHA-256 + site salt.
 - No raw cookies or POST bodies.
-- Provide doc section describing what is sent & opt-outs.
-
-## 14. Admin UI
-Menu: Tools → Azure Insights (capability `manage_options`)
 Sections, use tabs:
 - Connection
 - Logging
@@ -185,50 +129,23 @@ Use WordPress Settings API; nonce & capability checks; sanitize callbacks.
 
 Status Indicators:
 - Last successful send timestamp
-- Items in memory buffer (live display best-effort) — optional
-- Retry queue length
-- Last error code/message
-
 ## 15. Class Layout (Namespace suggestion)
-Namespace root: `AzureInsightsWonolog` (PSR-4: `src/`)
-```
-src/
-  Plugin.php (bootstrap)
-  Handler/AzureInsightsHandler.php
+Namespace root (final): `AzureInsightsMonolog` (PSR-4: `src/`)
   Telemetry/TelemetryClient.php
   Telemetry/BatchTransport.php
-  Telemetry/Correlation.php
-  Telemetry/Redactor.php
-  Telemetry/Sampler.php
-  Performance/Collector.php
   Admin/SettingsPage.php
   Admin/StatusPanel.php
   Queue/RetryQueue.php
   CLI/Commands.php
-  Helpers/functions.php
-```
-
-Autoload via Composer PSR-4; fallback simple autoloader if Composer not present.
-
 ## 16. Telemetry Payload Format
 Each item JSON with required fields (`name`,`time`,`iKey` or part of connection string, `data` envelope). Batch is newline-delimited JSON per ingestion API. Ensure content-type `application/x-json-stream`.
 
-## 17. Sampling Implementation
-- Fixed rate: generate random float via `mt_rand()/mt_getrandmax()`; if > rate, skip record (except ERROR+). Add sampling rate dimension.
-- Provide filter to override.
-
 ## 18. Activation / Deactivation Hooks
 - Activation: schedule cron, initialize options if absent.
-- Deactivation: clear cron events, flush queue (best effort).
+Namespace root: `AzureInsightsMonolog` (PSR-4: `src/`)
 - Uninstall (optional future): remove options unless constant `AIW_PRESERVE_SETTINGS` set.
 
-## 19. Testing Strategy
-Unit:
-- Handler: level mapping, context → dimensions, exception extraction
-- Sampler: probability boundaries
-- Correlation: header parsing & generation
 - Redactor: key removal / partial redaction
-- RetryQueue: schedule progression
 
 Integration (with WordPress test suite):
 - Simulate request, emit logs, verify batch assembly (mock HTTP transport)
@@ -255,11 +172,7 @@ Phase 2: Performance metrics, retry queue, events API, admin status panel.
 Phase 3: CLI commands, advanced redaction, slow hook profiler, health metrics.
 
 ## 23. Definition of Done (Phase 1)
-- Logs from Wonolog appear in Azure (traces & exceptions) with correlation IDs.
-- Request telemetry recorded with duration & success status.
-- Configurable min level & sampling rate via admin page.
-- Basic documentation & Azure setup guide present.
-- Unit tests for mapping & correlation pass.
+ Logs from Monolog appear in Azure (traces & exceptions) with correlation IDs.
 
 ## 24. Open Questions / Future Considerations
 - Add front-end JS telemetry injection? (Later)

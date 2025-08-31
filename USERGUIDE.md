@@ -1,7 +1,7 @@
-# User Guide – Azure Insights Handler for Wonolog
+# User Guide – Azure Insights Handler for Monolog
 
 ## 1. What Is This Plugin?
-Azure Insights Handler for Wonolog is a WordPress plugin that bridges your site’s (or network’s) PHP / WordPress logs and custom operational telemetry into Azure Application Insights. It layers on top of Wonolog (which provides a Monolog logger inside WordPress) and converts Monolog records plus internally captured signals (requests, exceptions, performance metrics, custom events & metrics) into the JSON line payload Azure expects.
+Azure Insights Handler for Monolog is a WordPress plugin that bridges your site’s (or network’s) PHP / WordPress logs and custom operational telemetry into Azure Application Insights. It uses Monolog directly (Wonolog no longer required) and converts Monolog records plus internally captured signals (requests, exceptions, performance metrics, custom events & metrics) into the JSON line payload Azure expects.
 
 It’s intentionally lightweight (no heavy Azure SDK) and production‑oriented: sampling, batching, retry with exponential backoff, secure secret storage, adaptive throttling, correlation propagation, and rich redaction to keep sensitive data out of the wire.
 
@@ -30,7 +30,7 @@ It’s intentionally lightweight (no heavy Azure SDK) and production‑oriented:
 
 ## 4. Installation & Activation
 1. Copy plugin folder into `wp-content/plugins/`.
-2. (Optional) Run `composer install` inside the plugin directory if you rely on bundled vendor libs (Wonolog may already provide Monolog).
+2. (Optional) Run `composer install` inside the plugin directory if you rely on bundled vendor libs.
 3. Activate in the WordPress Admin (or network‑activate in multisite if you want global control).
 4. Provide a Connection String (Settings → Azure Insights) OR set it securely before WP loads:
 ```php
@@ -70,7 +70,7 @@ This allows ops to enforce mandatory settings via code / infrastructure, while s
 
 ## 8. Sending Telemetry
 ### Automatic
-- Logs via Wonolog / Monolog handlers.
+- Logs via Monolog handler.
 - Request telemetry on `shutdown` (duration, result code, correlation IDs).
 - Performance metrics gathered by hook instrumentation & thresholds.
 - Slow query metrics (if thresholds enabled).
@@ -180,7 +180,7 @@ Call `aiw_privacy_notice()` (or filter `aiw_privacy_notice_text`) to surface end
 Unless `AIW_PRESERVE_SETTINGS` is defined truthy, all plugin options & network options (prefixed `aiw_`) are removed during uninstall.
 
 ## 22. License & Attribution
-MIT. Built to complement Wonolog + Azure Application Insights for production WordPress observability.
+MIT. Built to complement Monolog + Azure Application Insights for production WordPress observability.
 
 ---
 Questions or improvement ideas? Open an issue or submit a PR. Happy observing!
