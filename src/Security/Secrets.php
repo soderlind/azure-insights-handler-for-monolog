@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-namespace AzureInsightsWonolog\Security;
+namespace AzureInsightsMonolog\Security;
 
 class Secrets {
 	private const PREFIX = 'enc:';

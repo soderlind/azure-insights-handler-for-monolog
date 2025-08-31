@@ -1,8 +1,8 @@
 <?php
-namespace AzureInsightsWonolog\Tests;
+namespace AzureInsightsMonolog\Tests;
 
 use PHPUnit\Framework\TestCase;
-use AzureInsightsWonolog\Admin\SettingsPage;
+use AzureInsightsMonolog\Admin\SettingsPage;
 use ReflectionClass;
 
 // WordPress function stubs for test context (only what's needed by methods under test)
@@ -45,9 +45,9 @@ class SettingsPageTest extends TestCase {
 		$method = $ref->getMethod( 'sanitize_instrumentation_key' );
 		$method->setAccessible( true );
 		// Intentionally malformed (contains disallowed chars and wrong length)
-		$invalid                        = 'INVALID_KEY_*!';
+		$invalid                          = 'INVALID_KEY_*!';
 		$GLOBALS[ 'aiw_settings_errors' ] = [];
-		$result                         = $method->invoke( $page, $invalid );
+		$result                           = $method->invoke( $page, $invalid );
 		$this->assertSame( '', $result, 'Invalid key should sanitize to empty string.' );
 		// add_settings_error may not fire if WP core not present; ensure no fatal instead of asserting side effect.
 	}

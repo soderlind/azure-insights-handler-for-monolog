@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-namespace AzureInsightsWonolog\Telemetry;
+namespace AzureInsightsMonolog\Telemetry; // already renamed earlier (ensure consistency)
 
 /**
  * Extracted transport responsible solely for delivering newline-delimited JSON payloads.

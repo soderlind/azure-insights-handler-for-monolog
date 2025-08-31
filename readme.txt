@@ -46,8 +46,6 @@ define( 'AIW_CONNECTION_STRING', 'InstrumentationKey=...;IngestionEndpoint=...' 
 
 == Frequently Asked Questions ==
 
-= Do I need the Wonolog plugin? =
-No. Direct Monolog loading via Composer is sufficient; Wonolog is no longer required. A deprecated loader file is included only for backward compatibility with old paths.
 
 = How do I change the sampling rate dynamically? =
 Adjust in settings UI or override per-record with filter `aiw_should_sample`.

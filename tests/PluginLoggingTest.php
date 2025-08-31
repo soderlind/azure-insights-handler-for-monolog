@@ -1,10 +1,10 @@
 <?php
-namespace AzureInsightsWonolog\Tests;
+namespace AzureInsightsMonolog\Tests;
 
 use PHPUnit\Framework\TestCase;
-use AzureInsightsWonolog\Plugin;
-use AzureInsightsWonolog\Handler\AzureInsightsHandler;
-use AzureInsightsWonolog\Telemetry\TelemetryClient;
+use AzureInsightsMonolog\Plugin;
+use AzureInsightsMonolog\Handler\AzureInsightsHandler;
+use AzureInsightsMonolog\Telemetry\TelemetryClient;
 use Monolog\Logger;
 
 class PluginLoggingTest extends TestCase {
@@ -27,7 +27,7 @@ class PluginLoggingTest extends TestCase {
 		if ( $corrRef->hasProperty( 'correlation' ) ) {
 			$prop = $corrRef->getProperty( 'correlation' );
 			$prop->setAccessible( true );
-			$corr = new \AzureInsightsWonolog\Telemetry\Correlation();
+			$corr = new \AzureInsightsMonolog\Telemetry\Correlation();
 			$corr->init();
 			$prop->setValue( $plugin, $corr );
 		}
@@ -37,7 +37,7 @@ class PluginLoggingTest extends TestCase {
 		$logger->pushHandler( $handler );
 
 		// Reset sampler adaptive window to avoid probabilistic drop from previous tests inflating window count.
-		$refSamplerWindow = new \ReflectionProperty( \AzureInsightsWonolog\Telemetry\Sampler::class, 'window' );
+		$refSamplerWindow = new \ReflectionProperty( \AzureInsightsMonolog\Telemetry\Sampler::class, 'window' );
 		$refSamplerWindow->setAccessible( true );
 		$refSamplerWindow->setValue( null, [] );
 

@@ -48,7 +48,7 @@ namespace {
 	}
 }
 
-namespace AzureInsightsWonolog\Admin {
+namespace AzureInsightsMonolog\Admin {
 
 	/**
 	 * Full-featured network admin settings page providing parity with per-site SettingsPage.
@@ -127,10 +127,10 @@ namespace AzureInsightsWonolog\Admin {
 			echo '<h2 class="nav-tab-wrapper aiw-modern-nav">';
 			foreach ( $labels as $slug => $meta ) {
 				[ $label, $icon ] = $meta;
-				$url           = $base . '&tab=' . $slug;
-				$cls           = 'nav-tab' . ( $slug === $active ? ' nav-tab-active' : '' );
-				$escL          = esc_html( $label );
-				$escU          = esc_url( $url );
+				$url              = $base . '&tab=' . $slug;
+				$cls              = 'nav-tab' . ( $slug === $active ? ' nav-tab-active' : '' );
+				$escL             = esc_html( $label );
+				$escU             = esc_url( $url );
 				echo '<a class="' . $cls . '" href="' . $escU . '"><span class="dashicons ' . $icon . '"></span>' . $escL . '</a>';
 			}
 			echo '</h2>';
@@ -144,7 +144,7 @@ namespace AzureInsightsWonolog\Admin {
 			echo '<div class="aiw-dashboard"><div class="aiw-summary-cards">';
 			foreach ( $summary as $row ) {
 				[ $label, $value, $state ] = $row;
-				$badge                 = $state ? '<span class="aiw-badge ' . esc_attr( $state ) . '">' . esc_html( $state ) . '</span>' : '';
+				$badge                     = $state ? '<span class="aiw-badge ' . esc_attr( $state ) . '">' . esc_html( $state ) . '</span>' : '';
 				echo '<div class="card"><h3 style="margin:0 0 4px;font-size:13px;color:var(--aiw-text-light);font-weight:500;">' . esc_html( $label ) . $badge . '</h3><div class="aiw-metric-val">' . esc_html( $value ) . '</div></div>';
 			}
 			echo '</div>';
@@ -250,7 +250,7 @@ namespace AzureInsightsWonolog\Admin {
 		}
 		private function field_secret( string $key, string $label, string $placeholder = '' ): void {
 			$raw     = (string) $this->so( $key, '' );
-			$isEnc   = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw );
+			$isEnc   = \AzureInsightsMonolog\Security\Secrets::is_encrypted( $raw );
 			$display = $isEnc ? '•••••• (encrypted)' : $raw;
 			$val     = esc_attr( $display );
 			echo '<tr><th scope="row">' . esc_html( $label ) . '</th><td><input type="text" class="aiw-input regular-text" name="' . esc_attr( $key ) . '" value="' . $val . '" placeholder="' . esc_attr( $placeholder ) . '" autocomplete="off" />';
@@ -325,8 +325,8 @@ namespace AzureInsightsWonolog\Admin {
 		private function send_test(): bool {
 			try {
 				$kind = isset( $_POST[ 'aiw_test_kind' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'aiw_test_kind' ] ) ) : 'info';
-				if ( class_exists( '\\AzureInsightsWonolog\\Plugin' ) ) {
-					$plugin = \AzureInsightsWonolog\Plugin::instance();
+				if ( class_exists( '\\AzureInsightsMonolog\\Plugin' ) ) {
+					$plugin = \AzureInsightsMonolog\Plugin::instance();
 					$corr   = $plugin->correlation();
 					$client = $plugin->telemetry();
 					if ( $client ) {
@@ -360,13 +360,14 @@ namespace AzureInsightsWonolog\Admin {
 			return [ [ 'Retry Queue', (string) $retryDepth, $retryDepth > 0 ? ( $retryDepth > 5 ? 'warn' : 'ok' ) : 'ok' ], [ 'Last Send', $sinceTxt, $since !== null && $since > 300 ? 'warn' : 'ok' ], [ 'Errors', $err ?: 'None', $err ? 'err' : 'ok' ], [ 'Sampling', $rate, ( $rate === '1' || $rate === '1.0' ) ? 'ok' : '' ], [ 'Mode', $mock ? 'Mock' : 'Live', $mock ? 'warn' : 'ok' ] ];
 		}
 		private function dashboard_sections(): array {
-			$opt                       = function ($k, $d                       = null) {
-				return function_exists( 'get_option' ) ? get_option( $k, $d ) : $d; };
-			$queue                     = $opt( 'aiw_retry_queue_v1', [] );
-			$depth                     = is_array( $queue ) ? count( $queue ) : 0;
-			$totalAttempts             = 0;
-			$maxAttempts               = 0;
-			$nextAttemptTs             = null;
+			$opt           = function ($k, $d           = null) {
+				return function_exists( 'get_option' ) ? get_option( $k, $d ) : $d;
+			};
+			$queue         = $opt( 'aiw_retry_queue_v1', [] );
+			$depth         = is_array( $queue ) ? count( $queue ) : 0;
+			$totalAttempts = 0;
+			$maxAttempts   = 0;
+			$nextAttemptTs = null;
 			if ( is_array( $queue ) ) {
 				foreach ( $queue as $entry ) {
 					$att           = (int) ( $entry[ 'attempts' ] ?? 0 );
@@ -378,21 +379,21 @@ namespace AzureInsightsWonolog\Admin {
 						$nextAttemptTs = $na;
 				}
 			}
-			$nextAttempt               = $nextAttemptTs ? ( $nextAttemptTs <= time() ? 'due now' : ( ( $nextAttemptTs - time() ) . 's' ) ) : '—';
-			$async                     = (int) $this->so( 'aiw_async_enabled', 0 );
-			$lastErrCode               = (string) $opt( 'aiw_last_error_code', '' );
-			$lastErrMsg                = (string) $opt( 'aiw_last_error_message', '' );
-			$lastSend                  = $opt( 'aiw_last_send_time' );
-			$lastSendFmt               = $lastSend ? gmdate( 'Y-m-d H:i:s', (int) $lastSend ) . ' UTC' : 'Never';
-			$rate                      = (string) $this->so( 'aiw_sampling_rate', '1' );
-			$mock                      = (int) $this->so( 'aiw_use_mock', 0 );
-			$hookThresh                = (int) $this->so( 'aiw_slow_hook_threshold_ms', 150 );
-			$queryThresh               = (int) $this->so( 'aiw_slow_query_threshold_ms', 500 );
-			$perf                      = (int) $this->so( 'aiw_enable_performance', 1 );
-			$events                    = (int) $this->so( 'aiw_enable_events_api', 1 );
-			$diag                      = (int) $this->so( 'aiw_enable_internal_diagnostics', 0 );
-			$storage                   = defined( 'AIW_RETRY_STORAGE' ) ? strtolower( constant( 'AIW_RETRY_STORAGE' ) ) : 'option';
-			$sections                  = [];
+			$nextAttempt                 = $nextAttemptTs ? ( $nextAttemptTs <= time() ? 'due now' : ( ( $nextAttemptTs - time() ) . 's' ) ) : '—';
+			$async                       = (int) $this->so( 'aiw_async_enabled', 0 );
+			$lastErrCode                 = (string) $opt( 'aiw_last_error_code', '' );
+			$lastErrMsg                  = (string) $opt( 'aiw_last_error_message', '' );
+			$lastSend                    = $opt( 'aiw_last_send_time' );
+			$lastSendFmt                 = $lastSend ? gmdate( 'Y-m-d H:i:s', (int) $lastSend ) . ' UTC' : 'Never';
+			$rate                        = (string) $this->so( 'aiw_sampling_rate', '1' );
+			$mock                        = (int) $this->so( 'aiw_use_mock', 0 );
+			$hookThresh                  = (int) $this->so( 'aiw_slow_hook_threshold_ms', 150 );
+			$queryThresh                 = (int) $this->so( 'aiw_slow_query_threshold_ms', 500 );
+			$perf                        = (int) $this->so( 'aiw_enable_performance', 1 );
+			$events                      = (int) $this->so( 'aiw_enable_events_api', 1 );
+			$diag                        = (int) $this->so( 'aiw_enable_internal_diagnostics', 0 );
+			$storage                     = defined( 'AIW_RETRY_STORAGE' ) ? strtolower( constant( 'AIW_RETRY_STORAGE' ) ) : 'option';
+			$sections                    = [];
 			$sections[ 'Connection' ][]  = [ 'title' => 'Connection', 'lines' => [ 
 				[ 'Conn String', $this->so( 'aiw_connection_string' ) ? 'Yes' : 'No', $this->so( 'aiw_connection_string' ) ? 'ok' : 'warn' ],
 				[ 'Instr Key', $this->so( 'aiw_instrumentation_key' ) ? 'Yes' : 'No', '' ],

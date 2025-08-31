@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-namespace AzureInsightsWonolog\Queue;
+namespace AzureInsightsMonolog\Queue;
 
 /**
  * Simple retry queue stored in a transient/option.

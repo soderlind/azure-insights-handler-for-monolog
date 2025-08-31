@@ -1,5 +1,8 @@
 # Changelog
 
+## [Unreleased]
+- Removed deprecated legacy integration hook (`wonolog.handlers`). The plugin now operates solely via its own hooks and configuration.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) and this project adheres to Semantic Versioning.
@@ -45,7 +48,7 @@ The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) a
 
 ## [0.1.0] - 2025-08-30
 ### Added
-- Initial import of Azure Insights handler (originally named for Wonolog).
+- Initial import of Azure Insights handler.
 - WordPress `readme.txt` and `.gitignore`.
 - Modernized & restructured settings page UI with improved help tabs.
 - Comprehensive contextual help system (Overview, Connection & Security, Sampling & Batching, Performance Metrics, Redaction & Privacy, Retry & Async, CLI & Testing, Filters & Extensibility).

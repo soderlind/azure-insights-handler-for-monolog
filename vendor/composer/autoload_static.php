@@ -29,8 +29,8 @@ class ComposerStaticInit1c910198c7448e997c659e4c16de21d8
         ),
         'A' => 
         array (
-            'AzureInsightsWonolog\\Tests\\' => 27,
-            'AzureInsightsWonolog\\' => 21,
+            'AzureInsightsMonolog\\Tests\\' => 27,
+            'AzureInsightsMonolog\\' => 21,
         ),
     );
 
@@ -55,11 +55,12 @@ class ComposerStaticInit1c910198c7448e997c659e4c16de21d8
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
         ),
-        'AzureInsightsWonolog\\Tests\\' => 
+        'AzureInsightsMonolog\\Tests\\' => 
         array (
             0 => __DIR__ . '/../..' . '/tests',
+            1 => __DIR__ . '/../..' . '/tests',
         ),
-        'AzureInsightsWonolog\\' => 
+        'AzureInsightsMonolog\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src',
         ),

@@ -46,7 +46,7 @@ Adjustments made: Added admin config, sampling, batching, retry, health status, 
 
 ## 4. Architecture Overview
 Components:
-- Service Provider (bootstrap) hooking into WordPress & Monolog (via direct handler registration or legacy Wonolog triggers when present)
+- Service Provider (bootstrap) hooking into WordPress & Monolog (direct handler registration)
 - Monolog Handler: `AzureInsightsHandler` (extends `Monolog\Handler\AbstractProcessingHandler`)
 - Telemetry Client Abstraction: wraps Application Insights ingestion (Connection String or Instrumentation Key)
 - Queue / Buffer: in-memory + transient/option based fallback for retry

@@ -1,11 +1,11 @@
 <?php
-namespace AzureInsightsWonolog\Tests;
+namespace AzureInsightsMonolog\Tests;
 
 use PHPUnit\Framework\TestCase;
-use AzureInsightsWonolog\Handler\AzureInsightsHandler;
-use AzureInsightsWonolog\Telemetry\TelemetryClient;
-use AzureInsightsWonolog\Plugin;
-use AzureInsightsWonolog\Telemetry\Correlation;
+use AzureInsightsMonolog\Handler\AzureInsightsHandler;
+use AzureInsightsMonolog\Telemetry\TelemetryClient;
+use AzureInsightsMonolog\Plugin;
+use AzureInsightsMonolog\Telemetry\Correlation;
 use Monolog\Logger;
 
 // Shim apply_filters for testing hook behavior.

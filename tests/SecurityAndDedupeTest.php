@@ -35,13 +35,13 @@ namespace {
 	}
 }
 
-namespace AzureInsightsWonolog\Tests {
+namespace AzureInsightsMonolog\Tests {
 	use PHPUnit\Framework\TestCase;
-	use AzureInsightsWonolog\Security\Secrets;
-	use AzureInsightsWonolog\Plugin;
-	use AzureInsightsWonolog\Telemetry\TelemetryClient;
-	use AzureInsightsWonolog\Handler\AzureInsightsHandler;
-	use AzureInsightsWonolog\Telemetry\Correlation;
+	use AzureInsightsMonolog\Security\Secrets;
+	use AzureInsightsMonolog\Plugin;
+	use AzureInsightsMonolog\Telemetry\TelemetryClient;
+	use AzureInsightsMonolog\Handler\AzureInsightsHandler;
+	use AzureInsightsMonolog\Telemetry\Correlation;
 	use Monolog\Logger;
 
 	class SecurityAndDedupeTest extends TestCase {
@@ -85,21 +85,21 @@ namespace AzureInsightsWonolog\Tests {
 			$prop = $pref->getProperty( 'correlation' );
 			$prop->setAccessible( true );
 			$prop->setValue( $plugin, $corr );
-			$template                   = [ 'level' => Logger::ERROR, 'message' => 'Boom', 'context' => [], 'formatted' => 'Boom' ];
-			$ex1                        = new \RuntimeException( 'Repeatable failure' );
-			$r1                         = $template;
+			$template                       = [ 'level' => Logger::ERROR, 'message' => 'Boom', 'context' => [], 'formatted' => 'Boom' ];
+			$ex1                            = new \RuntimeException( 'Repeatable failure' );
+			$r1                             = $template;
 			$r1[ 'context' ][ 'exception' ] = $ex1;
-			$ref                        = new \ReflectionClass( $handler );
-			$m                          = $ref->getMethod( 'write' );
+			$ref                            = new \ReflectionClass( $handler );
+			$m                              = $ref->getMethod( 'write' );
 			$m->setAccessible( true );
 			$m->invoke( $handler, $r1 );
 			$this->assertCount( 1, $client->debug_get_buffer(), 'First exception recorded' );
-			$r2                         = $template;
+			$r2                             = $template;
 			$r2[ 'context' ][ 'exception' ] = $ex1;
 			$m->invoke( $handler, $r2 );
 			$this->assertCount( 1, $client->debug_get_buffer(), 'Duplicate suppressed' );
-			$ex2                        = new \RuntimeException( 'Different failure' );
-			$r3                         = $template;
+			$ex2                            = new \RuntimeException( 'Different failure' );
+			$r3                             = $template;
 			$r3[ 'context' ][ 'exception' ] = $ex2;
 			$m->invoke( $handler, $r3 );
 			$this->assertCount( 2, $client->debug_get_buffer(), 'Different exception allowed' );

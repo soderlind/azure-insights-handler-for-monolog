@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-namespace AzureInsightsWonolog\Telemetry;
+namespace AzureInsightsMonolog\Telemetry;
 
 /**
  * Manages correlation (trace & span IDs) for current request.

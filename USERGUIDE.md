@@ -1,7 +1,7 @@
 # User Guide – Azure Insights Handler for Monolog
 
 ## 1. What Is This Plugin?
-Azure Insights Handler for Monolog is a WordPress plugin that bridges your site’s (or network’s) PHP / WordPress logs and custom operational telemetry into Azure Application Insights. It uses Monolog directly (Wonolog no longer required) and converts Monolog records plus internally captured signals (requests, exceptions, performance metrics, custom events & metrics) into the JSON line payload Azure expects.
+Azure Insights Handler for Monolog is a WordPress plugin that bridges your site’s (or network’s) PHP / WordPress logs and custom operational telemetry into Azure Application Insights. It converts Monolog records plus internally captured signals (requests, exceptions, performance metrics, custom events & metrics) into the JSON line payload Azure expects.
 
 It’s intentionally lightweight (no heavy Azure SDK) and production‑oriented: sampling, batching, retry with exponential backoff, secure secret storage, adaptive throttling, correlation propagation, and rich redaction to keep sensitive data out of the wire.
 

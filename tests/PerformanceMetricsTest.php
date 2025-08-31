@@ -1,9 +1,9 @@
 <?php
-namespace AzureInsightsWonolog\Tests;
+namespace AzureInsightsMonolog\Tests;
 
 use PHPUnit\Framework\TestCase;
-use AzureInsightsWonolog\Plugin;
-use AzureInsightsWonolog\Performance\Collector;
+use AzureInsightsMonolog\Plugin;
+use AzureInsightsMonolog\Performance\Collector;
 
 // Provide WP option shims if not present.
 if ( ! function_exists( 'get_option' ) ) {

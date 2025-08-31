@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-namespace AzureInsightsWonolog\Telemetry;
+namespace AzureInsightsMonolog\Telemetry;
 
 /**
  * Mock telemetry client: stores items in memory, never sends HTTP.

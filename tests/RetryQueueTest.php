@@ -1,8 +1,8 @@
 <?php
-namespace AzureInsightsWonolog\Tests;
+namespace AzureInsightsMonolog\Tests;
 
 use PHPUnit\Framework\TestCase;
-use AzureInsightsWonolog\Queue\RetryQueue;
+use AzureInsightsMonolog\Queue\RetryQueue;
 
 // No WP functions: rely on fallback storage inside RetryQueue using global $aiw_retry_store
 

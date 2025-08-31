@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
-namespace AzureInsightsWonolog\Handler;
+namespace AzureInsightsMonolog\Handler;
 
-use AzureInsightsWonolog\Telemetry\TelemetryClient;
-use AzureInsightsWonolog\Plugin;
+use AzureInsightsMonolog\Telemetry\TelemetryClient;
+use AzureInsightsMonolog\Plugin;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Logger;
-use AzureInsightsWonolog\Telemetry\Sampler;
-use AzureInsightsWonolog\Telemetry\Redactor;
+use AzureInsightsMonolog\Telemetry\Sampler;
+use AzureInsightsMonolog\Telemetry\Redactor;
 
 /**
  * Monolog handler that forwards records to Azure Application Insights.
