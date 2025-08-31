@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Azure Insights Handler for Monolog
  * Description: Forwards Monolog logs and custom telemetry (requests, events, metrics, exceptions) to Azure Application Insights.
- * Version: 0.4.0
+ * Version: 0.5.0
  * Author: Per Søderlind
  * License: GPL2
  * Text Domain: azure-insights-monolog
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'AIW_PLUGIN_FILE', __FILE__ );
 define( 'AIW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AIW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'AIW_PLUGIN_VERSION', '0.4.0' );
+define( 'AIW_PLUGIN_VERSION', '0.5.0' );
 
 // Optional disable & diagnostics (same semantics as previous version)
 if ( defined( 'AIW_DISABLE' ) && AIW_DISABLE ) {

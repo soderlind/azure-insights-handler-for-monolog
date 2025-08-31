@@ -1,8 +1,5 @@
 # Changelog
 
-## [Unreleased]
-- Removed deprecated legacy integration hook (`wonolog.handlers`). The plugin now operates solely via its own hooks and configuration.
-
 All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) and this project adheres to Semantic Versioning.
@@ -10,6 +7,16 @@ The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) a
 ## [Unreleased]
 ### Added
 - Placeholder section for upcoming changes.
+
+## [0.5.0] - 2025-08-31
+### Changed
+- Version bump (no functional changes after 0.4.0; preparing for next development cycle).
+
+## [0.4.0] - 2025-08-31
+### Removed
+- Deprecated legacy integration hook (`wonolog.handlers`); plugin now operates solely via its own hooks and configuration.
+### Changed
+- Purged all historical legacy name references from documentation, comments, tests, and code comments.
 
 ## [0.3.0] - 2025-08-30
 ### Added
