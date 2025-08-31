@@ -1,6 +1,6 @@
-# Azure Insights Handler for Wonolog
+# Azure Insights Handler for Monolog
 
-WordPress plugin forwarding Wonolog / Monolog logs and custom telemetry (traces, requests, exceptions, events, metrics) to Azure Application Insights.
+WordPress plugin forwarding Monolog logs and custom telemetry (traces, requests, exceptions, events, metrics) to Azure Application Insights.
 
 ## Features
 - Trace (MessageData) telemetry for Monolog records
@@ -36,11 +36,11 @@ WordPress plugin forwarding Wonolog / Monolog logs and custom telemetry (traces,
 ## Requirements
 - WordPress 6.5+
 - PHP 8.2+
-- Wonolog plugin (for Monolog integration) recommended
+- Monolog library via Composer (no separate Wonolog plugin required)
 
 ## Installation
 
-   1. Download [`azure-insights-handler-for-wonolog.zip`](https://github.com/soderlind/azure-insights-handler-for-wonolog/releases/latest/download/azure-insights-handler-for-wonolog.zip)
+    1. Download [`azure-insights-handler-for-monolog.zip`](https://github.com/soderlind/azure-insights-handler-for-monolog/releases/latest/download/azure-insights-handler-for-monolog.zip)
    2. Upload via  Plugins > Add New > Upload Plugin
    3. Activate in WP Admin.
    4. Provide Connection String (preferred) or legacy Instrumentation Key under Settings → Azure Insights.

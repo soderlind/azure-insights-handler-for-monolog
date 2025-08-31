@@ -45,7 +45,7 @@ The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) a
 
 ## [0.1.0] - 2025-08-30
 ### Added
-- Initial import of Azure Insights handler for Wonolog.
+- Initial import of Azure Insights handler (originally named for Wonolog).
 - WordPress `readme.txt` and `.gitignore`.
 - Modernized & restructured settings page UI with improved help tabs.
 - Comprehensive contextual help system (Overview, Connection & Security, Sampling & Batching, Performance Metrics, Redaction & Privacy, Retry & Async, CLI & Testing, Filters & Extensibility).
