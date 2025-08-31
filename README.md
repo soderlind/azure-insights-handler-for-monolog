@@ -40,17 +40,17 @@ WordPress plugin forwarding Monolog logs and custom telemetry (traces, requests,
 
 ## Installation
 
-    1. Download [azure-insights-handler-for-monolog.zip](https://github.com/soderlind/azure-insights-handler-for-monolog/releases/latest/download/azure-insights-handler-for-monolog.zip)
-   2. Upload via  Plugins > Add New > Upload Plugin
-   3. Activate in WP Admin.
-   4. Provide Connection String (preferred) or legacy Instrumentation Key under Settings → Azure Insights.
-       - Or set one of these before WordPress loads (wp-config.php / server env):
-           - `AIW_CONNECTION_STRING`
-           - `APPLICATIONINSIGHTS_CONNECTION_STRING` (fallback)
-           - `APPINSIGHTS_CONNECTION_STRING` (fallback)
-           - `AIW_INSTRUMENTATION_KEY` or `APPLICATIONINSIGHTS_INSTRUMENTATION_KEY`
-       Constants still override environment variables if both are present.
-   5. (Optional) Enable Mock Mode for local development and open the Mock Telemetry Viewer.
+1. Download [azure-insights-handler-for-monolog.zip](https://github.com/soderlind/azure-insights-handler-for-monolog/releases/latest/download/azure-insights-handler-for-monolog.zip)
+2. Upload via  Plugins > Add New > Upload Plugin
+3. Activate in WP Admin.
+4. Provide Connection String (preferred) or legacy Instrumentation Key under Settings → Azure Insights.
+	- Or set one of these before WordPress loads (wp-config.php / server env):
+		- `AIW_CONNECTION_STRING`
+		- `APPLICATIONINSIGHTS_CONNECTION_STRING` (fallback)
+		- `APPINSIGHTS_CONNECTION_STRING` (fallback)
+		- `AIW_INSTRUMENTATION_KEY` or `APPLICATIONINSIGHTS_INSTRUMENTATION_KEY`
+	Constants still override environment variables if both are present.
+5. (Optional) Enable Mock Mode for local development and open the Mock Telemetry Viewer.
 
 ### Updates
 Plugin updates are handled automatically via GitHub. No need to manually download and install updates.
