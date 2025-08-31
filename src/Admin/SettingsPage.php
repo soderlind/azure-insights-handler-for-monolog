@@ -1,9 +1,9 @@
 <?php
-namespace AzureInsightsWonolog\Admin;
+namespace AzureInsightsMonolog\Admin;
 
 class SettingsPage {
 	const OPTION_GROUP = 'aiw_settings';
-	const PAGE_SLUG    = 'azure-insights-wonolog';
+	const PAGE_SLUG    = 'azure-insights';
 
 	/** @var array<string,bool> */
 	private array $page_hooks = [];
@@ -32,7 +32,7 @@ class SettingsPage {
 					return;
 
 				$tabs = [ 
-					'aiw_overview'    => [ 'Overview', '<p><strong>Azure Insights</strong> forwards Wonolog / Monolog logs plus request, event, metric & exception telemetry to <em>Azure Application Insights</em> with correlation, batching & sampling to keep overhead low.</p><p><strong>Quick Start:</strong> Add Connection String &rarr; Send Test Telemetry &rarr; View in Azure Logs (<code>traces</code>, <code>requests</code>, <code>customMetrics</code>).</p><p><strong>Modes:</strong> <em>Live</em> (sends to Azure) / <em>Mock</em> (stores locally for inspection). Switch via the Connection tab.</p>' ],
+					'aiw_overview'    => [ 'Overview', '<p><strong>Azure Insights</strong> forwards Monolog logs plus request, event, metric & exception telemetry to <em>Azure Application Insights</em> with correlation, batching & sampling to keep overhead low.</p><p><strong>Quick Start:</strong> Add Connection String &rarr; Send Test Telemetry &rarr; View in Azure Logs (<code>traces</code>, <code>requests</code>, <code>customMetrics</code>).</p><p><strong>Modes:</strong> <em>Live</em> (sends to Azure) / <em>Mock</em> (stores locally for inspection). Switch via the Connection tab.</p>' ],
 					'aiw_conn_sec'    => [ 'Connection & Security', '<p>Prefer a <strong>Connection String</strong>; legacy Instrumentation Key only if needed. Secrets are stored encrypted (AES-256-CBC w/ WP salts) and masked after save. You can also define constants (<code>AIW_CONNECTION_STRING</code>) in <code>wp-config.php</code> to keep secrets out of the DB.</p><p><strong>Correlation:</strong> Incoming <code>traceparent</code> is honored; new span ID always generated. Outbound HTTP requests get a <code>traceparent</code> header (filter <code>aiw_propagate_correlation</code> to disable).</p>' ],
 					'aiw_sampling'    => [ 'Sampling & Batching', '<p><strong>Sampling</strong> probabilistically drops lower-severity telemetry (errors are always kept). Effective rate auto-drops under burst load. Adjust with slider (0 – 1). Filter <code>aiw_should_sample</code> to override.</p><p><strong>Batching:</strong> Size (<code>Batch Max Size</code>) or interval (<code>Flush Interval</code>) triggers send. Enable <em>Async Send</em> to queue lines for cron (<code>aiw_async_flush</code>) reducing request latency.</p>' ],
 					'aiw_performance' => [ 'Performance Metrics', '<p>If enabled, hook durations exceeding threshold, memory peak, DB query counts / time, slow queries (≥ threshold), cron durations are emitted as <code>customMetrics</code>. Tune thresholds in Behavior tab. Disable if minimal footprint needed.</p>' ],
@@ -308,7 +308,7 @@ class SettingsPage {
 		// Connection String field (masked if encrypted)
 		add_settings_field( 'aiw_connection_string', 'Connection String', function () {
 			$raw     = function_exists( 'get_option' ) ? get_option( 'aiw_connection_string', '' ) : '';
-			$display = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw ) ? '******** (encrypted)' : $raw;
+			$display = \AzureInsightsMonolog\Security\Secrets::is_encrypted( $raw ) ? '******** (encrypted)' : $raw;
 			$val     = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
 			echo '<input type="text" name="aiw_connection_string" value="' . $val . '" class="regular-text code" placeholder="InstrumentationKey=...;IngestionEndpoint=https://..." autocomplete="off" />';
 			echo '<p class="description">Paste full connection string from Azure Portal.</p>';
@@ -317,7 +317,7 @@ class SettingsPage {
 		// Legacy instrumentation key
 		add_settings_field( 'aiw_instrumentation_key', 'Instrumentation Key (legacy)', function () {
 			$raw     = function_exists( 'get_option' ) ? get_option( 'aiw_instrumentation_key', '' ) : '';
-			$display = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw ) ? '******** (encrypted)' : $raw;
+			$display = \AzureInsightsMonolog\Security\Secrets::is_encrypted( $raw ) ? '******** (encrypted)' : $raw;
 			$val     = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
 			echo '<input type="text" name="aiw_instrumentation_key" value="' . $val . '" class="regular-text code" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" />';
 			echo '<p class="description">Deprecated. Provide only if not using a Connection String.</p>';
@@ -455,8 +455,8 @@ class SettingsPage {
 	private function send_test_telemetry() {
 		try {
 			$kind = isset( $_POST[ 'aiw_test_kind' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'aiw_test_kind' ] ) ) : 'info';
-			if ( class_exists( '\AzureInsightsWonolog\Plugin' ) ) {
-				$plugin = \AzureInsightsWonolog\Plugin::instance();
+			if ( class_exists( '\AzureInsightsMonolog\Plugin' ) ) {
+				$plugin = \AzureInsightsMonolog\Plugin::instance();
 				$corr   = $plugin->correlation();
 				$client = $plugin->telemetry();
 				if ( $client ) {
@@ -718,7 +718,7 @@ class SettingsPage {
 
 		// Connection String
 		$raw          = function_exists( 'get_option' ) ? get_option( 'aiw_connection_string', '' ) : '';
-		$is_encrypted = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw );
+		$is_encrypted = \AzureInsightsMonolog\Security\Secrets::is_encrypted( $raw );
 		$display      = $is_encrypted ? '••••••••••••••••••••••••••••••••••••••••' : $raw;
 		$val          = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
 		echo '<tr><th scope="row">Connection String</th><td>';
@@ -733,7 +733,7 @@ class SettingsPage {
 
 		// Instrumentation Key (legacy)
 		$raw              = function_exists( 'get_option' ) ? get_option( 'aiw_instrumentation_key', '' ) : '';
-		$is_encrypted_key = \AzureInsightsWonolog\Security\Secrets::is_encrypted( $raw );
+		$is_encrypted_key = \AzureInsightsMonolog\Security\Secrets::is_encrypted( $raw );
 		$display          = $is_encrypted_key ? '••••••••-••••-••••-••••-••••••••••••' : $raw;
 		$val              = function_exists( 'esc_attr' ) ? esc_attr( $display ) : htmlspecialchars( $display, ENT_QUOTES, 'UTF-8' );
 		echo '<tr><th scope="row">Instrumentation Key<br><small style="color:#646970;">(Legacy)</small></th><td>';

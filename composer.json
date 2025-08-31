@@ -1,6 +1,6 @@
 {
-	"name": "your-vendor/azure-insights-handler-for-wonolog",
-	"description": "Azure Application Insights handler integration for Wonolog (WordPress).",
+	"name": "your-vendor/azure-insights-handler-for-monolog",
+	"description": "Azure Application Insights handler integration for Monolog (WordPress).",
 	"type": "wordpress-plugin",
 	"license": "GPL-2.0-or-later",
 	"require": {
@@ -13,12 +13,13 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"AzureInsightsWonolog\\": "src/"
+			"AzureInsightsMonolog\\": "src/",
+			"AzureInsightsMonolog\\Tests\\": "tests/"
 		}
 	},
 	"autoload-dev": {
 		"psr-4": {
-			"AzureInsightsWonolog\\Tests\\": "tests/"
+			"AzureInsightsMonolog\\Tests\\": "tests/"
 		}
 	},
 	"scripts": {

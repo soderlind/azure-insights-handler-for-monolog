@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-namespace AzureInsightsWonolog\Performance;
+namespace AzureInsightsMonolog\Performance;
 
-use AzureInsightsWonolog\Plugin;
+use AzureInsightsMonolog\Plugin;
 
 class Collector {
 	/** @var array<string,float> */

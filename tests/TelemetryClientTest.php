@@ -1,8 +1,8 @@
 <?php
-namespace AzureInsightsWonolog\Tests;
+namespace AzureInsightsMonolog\Tests;
 
 use PHPUnit\Framework\TestCase;
-use AzureInsightsWonolog\Telemetry\TelemetryClient;
+use AzureInsightsMonolog\Telemetry\TelemetryClient;
 
 class TelemetryClientTest extends TestCase {
 	private function makeClient(): TelemetryClient {

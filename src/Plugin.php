@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
-namespace AzureInsightsWonolog;
+namespace AzureInsightsMonolog;
 
-use AzureInsightsWonolog\Telemetry\Correlation;
-use AzureInsightsWonolog\Telemetry\TelemetryClient;
-use AzureInsightsWonolog\Telemetry\MockTelemetryClient;
-use AzureInsightsWonolog\Handler\AzureInsightsHandler;
-use AzureInsightsWonolog\Queue\RetryQueue;
-use AzureInsightsWonolog\Admin\SettingsPage;
-use AzureInsightsWonolog\Performance\Collector;
-use AzureInsightsWonolog\Admin\MockViewer;
-use AzureInsightsWonolog\Admin\RetryQueueViewer;
-use AzureInsightsWonolog\Admin\StatusPanel;
+use AzureInsightsMonolog\Telemetry\Correlation;
+use AzureInsightsMonolog\Telemetry\TelemetryClient;
+use AzureInsightsMonolog\Telemetry\MockTelemetryClient;
+use AzureInsightsMonolog\Handler\AzureInsightsHandler;
+use AzureInsightsMonolog\Queue\RetryQueue;
+use AzureInsightsMonolog\Admin\SettingsPage;
+use AzureInsightsMonolog\Performance\Collector;
+use AzureInsightsMonolog\Admin\MockViewer;
+use AzureInsightsMonolog\Admin\RetryQueueViewer;
+use AzureInsightsMonolog\Admin\StatusPanel;
 
 /**
  * Core plugin bootstrap singleton.
@@ -97,9 +97,11 @@ class Plugin {
 						}
 					}
 				} catch (\Throwable $e) {
+					// swallow
 				}
 			} );
 		}
+		// (Legacy integration removed; users integrate directly with Monolog.)
 		$use_mock_option = function_exists( 'get_option' ) ? (bool) get_option( 'aiw_use_mock', false ) : false;
 		$use_mock        = $use_mock_option;
 		if ( function_exists( 'apply_filters' ) ) {
@@ -167,31 +169,27 @@ class Plugin {
 			}, 10, 3 );
 		}
 
-		// Hook into Wonolog if present.
+		// Legacy log router integration removed; direct Monolog handler usage only.
+		// Request telemetry on shutdown.
 		if ( function_exists( 'add_action' ) ) {
-			add_action( 'wonolog.handlers', function ($handlers) {
-				$handlers[] = $this->handler;
-				return $handlers;
-			} );
-			// Request telemetry on shutdown.
 			add_action( 'shutdown', [ $this, 'shutdown_flush' ], 9999 );
 			add_action( 'aiw_process_retry_queue', [ $this, 'process_retry_queue' ] );
-			// Inject correlation headers into outbound HTTP requests when enabled (filter allows control)
-			if ( function_exists( 'add_filter' ) ) {
-				add_filter( 'http_request_args', function ($args, $url) {
-					$enable = true;
-					if ( function_exists( 'apply_filters' ) ) {
-						$enable = apply_filters( 'aiw_propagate_correlation', $enable, $url, $args );
-					}
-					if ( ! $enable )
-						return $args;
-					if ( ! isset( $args[ 'headers' ] ) || ! is_array( $args[ 'headers' ] ) ) {
-						$args[ 'headers' ] = [];
-					}
-					$args[ 'headers' ][ 'traceparent' ] = $this->correlation->traceparent_header();
+		}
+		// Inject correlation headers into outbound HTTP requests when enabled (filter allows control)
+		if ( function_exists( 'add_filter' ) ) {
+			add_filter( 'http_request_args', function ($args, $url) {
+				$enable = true;
+				if ( function_exists( 'apply_filters' ) ) {
+					$enable = apply_filters( 'aiw_propagate_correlation', $enable, $url, $args );
+				}
+				if ( ! $enable )
 					return $args;
-				}, 10, 2 );
-			}
+				if ( ! isset( $args[ 'headers' ] ) || ! is_array( $args[ 'headers' ] ) ) {
+					$args[ 'headers' ] = [];
+				}
+				$args[ 'headers' ][ 'traceparent' ] = $this->correlation->traceparent_header();
+				return $args;
+			}, 10, 2 );
 		}
 	}
 
@@ -226,11 +224,11 @@ class Plugin {
 			'async_enabled'        => (bool) ( $siteOpt( 'aiw_async_enabled' ) ?? $getOpt( 'aiw_async_enabled', false ) ),
 		];
 		// Decrypt if encrypted
-		if ( isset( $defaults[ 'connection_string' ] ) && \AzureInsightsWonolog\Security\Secrets::is_encrypted( $defaults[ 'connection_string' ] ) ) {
-			$defaults[ 'connection_string' ] = \AzureInsightsWonolog\Security\Secrets::decrypt( $defaults[ 'connection_string' ] );
+		if ( isset( $defaults[ 'connection_string' ] ) && \AzureInsightsMonolog\Security\Secrets::is_encrypted( $defaults[ 'connection_string' ] ) ) {
+			$defaults[ 'connection_string' ] = \AzureInsightsMonolog\Security\Secrets::decrypt( $defaults[ 'connection_string' ] );
 		}
-		if ( isset( $defaults[ 'instrumentation_key' ] ) && \AzureInsightsWonolog\Security\Secrets::is_encrypted( $defaults[ 'instrumentation_key' ] ) ) {
-			$defaults[ 'instrumentation_key' ] = \AzureInsightsWonolog\Security\Secrets::decrypt( $defaults[ 'instrumentation_key' ] );
+		if ( isset( $defaults[ 'instrumentation_key' ] ) && \AzureInsightsMonolog\Security\Secrets::is_encrypted( $defaults[ 'instrumentation_key' ] ) ) {
+			$defaults[ 'instrumentation_key' ] = \AzureInsightsMonolog\Security\Secrets::decrypt( $defaults[ 'instrumentation_key' ] );
 		}
 		// Parse connection string if provided: InstrumentationKey=...;IngestionEndpoint=...;
 		if ( ! empty( $defaults[ 'connection_string' ] ) && is_string( $defaults[ 'connection_string' ] ) ) {

@@ -8,6 +8,16 @@ The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) a
 ### Added
 - Placeholder section for upcoming changes.
 
+## [0.5.0] - 2025-08-31
+### Changed
+- Version bump (no functional changes after 0.4.0; preparing for next development cycle).
+
+## [0.4.0] - 2025-08-31
+### Removed
+- Deprecated legacy integration hook (`wonolog.handlers`); plugin now operates solely via its own hooks and configuration.
+### Changed
+- Purged all historical legacy name references from documentation, comments, tests, and code comments.
+
 ## [0.3.0] - 2025-08-30
 ### Added
 - GitHub-based self-update mechanism integrating plugin-update-checker library with release asset ZIP discovery.
@@ -45,7 +55,7 @@ The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) a
 
 ## [0.1.0] - 2025-08-30
 ### Added
-- Initial import of Azure Insights handler (originally named for Wonolog).
+- Initial import of Azure Insights handler.
 - WordPress `readme.txt` and `.gitignore`.
 - Modernized & restructured settings page UI with improved help tabs.
 - Comprehensive contextual help system (Overview, Connection & Security, Sampling & Batching, Performance Metrics, Redaction & Privacy, Retry & Async, CLI & Testing, Filters & Extensibility).

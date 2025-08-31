@@ -1,5 +1,5 @@
 <?php
-use AzureInsightsWonolog\Plugin;
+use AzureInsightsMonolog\Plugin;
 
 if ( ! function_exists( 'aiw_current_trace_id' ) ) {
 	function aiw_current_trace_id(): ?string {

@@ -1,5 +1,5 @@
 <?php
-namespace AzureInsightsWonolog\Updater;
+namespace AzureInsightsMonolog\Updater;
 
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
@@ -113,7 +113,7 @@ class GitHubPluginUpdater {
 	 * @param string $plugin_slug Plugin slug
 	 * @param string $branch Branch name (default: 'main')
 	 * 
-	 * @return GitHub_Plugin_Updater
+	 * @return GitHubPluginUpdater
 	 */
 	public static function create( $github_url, $plugin_file, $plugin_slug, $branch = 'main' ) {
 		return new self( array(
@@ -133,7 +133,7 @@ class GitHubPluginUpdater {
 	 * @param string $name_regex Regex pattern for release assets
 	 * @param string $branch Branch name (default: 'main')
 	 * 
-	 * @return GitHub_Plugin_Updater
+	 * @return GitHubPluginUpdater
 	 */
 	public static function create_with_assets( $github_url, $plugin_file, $plugin_slug, $name_regex, $branch = 'main' ) {
 		return new self( array(

@@ -1,7 +1,7 @@
 <?php
-namespace AzureInsightsWonolog\Admin;
+namespace AzureInsightsMonolog\Admin;
 
-use AzureInsightsWonolog\Plugin;
+use AzureInsightsMonolog\Plugin;
 
 class RetryQueueViewer {
 	private $slug = 'aiw-retry-queue';

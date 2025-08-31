@@ -1,12 +1,12 @@
 <?php
-namespace AzureInsightsWonolog\CLI;
+namespace AzureInsightsMonolog\CLI;
 
 use WP_CLI;
-use AzureInsightsWonolog\Plugin;
+use AzureInsightsMonolog\Plugin;
 
 if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( 'WP_CLI' ) ) {
 	/**
-	 * Azure Insights Wonolog integration commands.
+	 * Azure Insights telemetry commands.
 	 */
 	class Commands {
 		/**
@@ -17,7 +17,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( 'WP_CLI' ) ) {
 		 *     wp aiw status
 		 */
 		public function status( $args, $assoc_args ) {
-			$status               = [ 'last_send' => function_exists( 'get_option' ) ? get_option( 'aiw_last_send_time' ) : null ];
+			$status                 = [ 'last_send' => function_exists( 'get_option' ) ? get_option( 'aiw_last_send_time' ) : null ];
 			$status[ 'queue' ]      = function_exists( 'get_option' ) ? count( (array) get_option( 'aiw_retry_queue_v1', [] ) ) : 0;
 			$status[ 'error_code' ] = function_exists( 'get_option' ) ? get_option( 'aiw_last_error_code', '' ) : '';
 			foreach ( $status as $k => $v ) {

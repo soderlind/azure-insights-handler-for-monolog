@@ -1,8 +1,8 @@
 <?php
-namespace AzureInsightsWonolog\Admin;
+namespace AzureInsightsMonolog\Admin;
 
-use AzureInsightsWonolog\Plugin;
-use AzureInsightsWonolog\Telemetry\MockTelemetryClient;
+use AzureInsightsMonolog\Plugin;
+use AzureInsightsMonolog\Telemetry\MockTelemetryClient;
 
 class MockViewer {
 	const PAGE_SLUG = 'aiw-mock-telemetry';
@@ -57,9 +57,11 @@ class MockViewer {
 
 		$items    = $client->sent_items();
 		$get      = function ($k) {
-			return isset( $_GET[ $k ] ) ? $_GET[ $k ] : null; };
+			return isset( $_GET[ $k ] ) ? $_GET[ $k ] : null;
+		};
 		$san      = function ($v) {
-			return function_exists( 'sanitize_text_field' ) ? sanitize_text_field( function_exists( 'wp_unslash' ) ? wp_unslash( $v ) : $v ) : (string) $v; };
+			return function_exists( 'sanitize_text_field' ) ? sanitize_text_field( function_exists( 'wp_unslash' ) ? wp_unslash( $v ) : $v ) : (string) $v;
+		};
 		$search   = $get( 's' ) !== null ? $san( $get( 's' ) ) : '';
 		$type_f   = $get( 'type' ) !== null ? $san( $get( 'type' ) ) : '';
 		$sev_min  = $get( 'sev' ) !== null && $get( 'sev' ) !== '' ? (int) $get( 'sev' ) : null;
@@ -162,10 +164,10 @@ class MockViewer {
 					echo '<span class="current" style="margin:0 4px;">' . $p . '</span>';
 					continue;
 				}
-				$query          = $_GET;
+				$query            = $_GET;
 				$query[ 'paged' ] = $p;
 				$query[ 'page' ]  = self::PAGE_SLUG;
-				$url            = admin_url( 'options-general.php?' . http_build_query( $query ) );
+				$url              = admin_url( 'options-general.php?' . http_build_query( $query ) );
 				echo '<a style="margin:0 4px;" href="' . $this->esc_url( $url ) . '">' . $p . '</a>';
 			}
 			echo '</div></div>';

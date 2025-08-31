@@ -11,6 +11,6 @@ return array(
     'Monolog\\' => array($vendorDir . '/monolog/monolog/src/Monolog'),
     'Doctrine\\Instantiator\\' => array($vendorDir . '/doctrine/instantiator/src/Doctrine/Instantiator'),
     'DeepCopy\\' => array($vendorDir . '/myclabs/deep-copy/src/DeepCopy'),
-    'AzureInsightsWonolog\\Tests\\' => array($baseDir . '/tests'),
-    'AzureInsightsWonolog\\' => array($baseDir . '/src'),
+    'AzureInsightsMonolog\\Tests\\' => array($baseDir . '/tests', $baseDir . '/tests'),
+    'AzureInsightsMonolog\\' => array($baseDir . '/src'),
 );

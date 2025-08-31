@@ -1,7 +1,7 @@
 <?php
-namespace AzureInsightsWonolog\Admin;
+namespace AzureInsightsMonolog\Admin;
 
-use AzureInsightsWonolog\Plugin;
+use AzureInsightsMonolog\Plugin;
 
 class StatusPanel {
 	const PAGE_SLUG = 'aiw-status';
@@ -31,7 +31,7 @@ class StatusPanel {
 		$status = $this->gather_status();
 		echo '<div class="wrap"><h1>Azure Insights Status</h1>';
 		if ( function_exists( 'admin_url' ) ) {
-			$base  = admin_url( 'options-general.php?page=' . \AzureInsightsWonolog\Admin\SettingsPage::PAGE_SLUG );
+			$base  = admin_url( 'options-general.php?page=' . \AzureInsightsMonolog\Admin\SettingsPage::PAGE_SLUG );
 			$links = [ 
 				'Connection' => $base . '&tab=connection',
 				'Behavior'   => $base . '&tab=behavior',

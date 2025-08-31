@@ -36,7 +36,7 @@ WordPress plugin forwarding Monolog logs and custom telemetry (traces, requests,
 ## Requirements
 - WordPress 6.5+
 - PHP 8.2+
-- Monolog library via Composer (no separate Wonolog plugin required)
+- Monolog library via Composer
 
 ## Installation
 
