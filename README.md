@@ -40,7 +40,7 @@ WordPress plugin forwarding Monolog logs and custom telemetry (traces, requests,
 
 ## Installation
 
-    1. Download [`azure-insights-handler-for-monolog.zip`](https://github.com/soderlind/azure-insights-handler-for-monolog/releases/latest/download/azure-insights-handler-for-monolog.zip)
+    1. Download [azure-insights-handler-for-monolog.zip](https://github.com/soderlind/azure-insights-handler-for-monolog/releases/latest/download/azure-insights-handler-for-monolog.zip)
    2. Upload via  Plugins > Add New > Upload Plugin
    3. Activate in WP Admin.
    4. Provide Connection String (preferred) or legacy Instrumentation Key under Settings → Azure Insights.
