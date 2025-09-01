@@ -371,14 +371,24 @@ class SettingsPage {
 
 		add_settings_field( 'aiw_batch_max_size', 'Batch Max Size', function () {
 			$default = defined( 'AIW_DEFAULT_BATCH_MAX_SIZE' ) ? (int) AIW_DEFAULT_BATCH_MAX_SIZE : 20;
-			$val     = function_exists( 'get_option' ) ? (int) get_option( 'aiw_batch_max_size', $default ) : $default;
+			$val     = $default;
+			if ( function_exists( 'is_network_admin' ) && is_network_admin() && function_exists( 'get_site_option' ) ) {
+				$val = (int) get_site_option( 'aiw_batch_max_size', $default );
+			} elseif ( function_exists( 'get_option' ) ) {
+				$val = (int) get_option( 'aiw_batch_max_size', $default );
+			}
 			echo '<input type="number" min="1" name="aiw_batch_max_size" value="' . (int) $val . '" style="width:90px;" />';
 			echo '<p class="description">Flush when this many telemetry items queued. Recommended default: ' . $default . '.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
 
 		add_settings_field( 'aiw_batch_flush_interval', 'Flush Interval (s)', function () {
 			$default = defined( 'AIW_DEFAULT_BATCH_FLUSH_INTERVAL' ) ? (int) AIW_DEFAULT_BATCH_FLUSH_INTERVAL : 5;
-			$val     = function_exists( 'get_option' ) ? (int) get_option( 'aiw_batch_flush_interval', $default ) : $default;
+			$val     = $default;
+			if ( function_exists( 'is_network_admin' ) && is_network_admin() && function_exists( 'get_site_option' ) ) {
+				$val = (int) get_site_option( 'aiw_batch_flush_interval', $default );
+			} elseif ( function_exists( 'get_option' ) ) {
+				$val = (int) get_option( 'aiw_batch_flush_interval', $default );
+			}
 			echo '<input type="number" min="1" name="aiw_batch_flush_interval" value="' . (int) $val . '" style="width:90px;" />';
 			echo '<p class="description">Auto flush oldest batch if no flush after this many seconds. Recommended default: ' . $default . '.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
@@ -392,14 +402,24 @@ class SettingsPage {
 
 		add_settings_field( 'aiw_slow_hook_threshold_ms', 'Slow Hook Threshold (ms)', function () {
 			$default = defined( 'AIW_DEFAULT_SLOW_HOOK_THRESHOLD_MS' ) ? (int) AIW_DEFAULT_SLOW_HOOK_THRESHOLD_MS : 150;
-			$val     = function_exists( 'get_option' ) ? (int) get_option( 'aiw_slow_hook_threshold_ms', $default ) : $default;
+			$val     = $default;
+			if ( function_exists( 'is_network_admin' ) && is_network_admin() && function_exists( 'get_site_option' ) ) {
+				$val = (int) get_site_option( 'aiw_slow_hook_threshold_ms', $default );
+			} elseif ( function_exists( 'get_option' ) ) {
+				$val = (int) get_option( 'aiw_slow_hook_threshold_ms', $default );
+			}
 			echo '<input type="number" min="10" name="aiw_slow_hook_threshold_ms" value="' . (int) $val . '" style="width:90px;" />';
 			echo '<p class="description">Record hook_duration_ms metrics only when duration exceeds this threshold. Recommended default: ' . $default . '.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
 
 		add_settings_field( 'aiw_slow_query_threshold_ms', 'Slow Query Threshold (ms)', function () {
 			$default = defined( 'AIW_DEFAULT_SLOW_QUERY_THRESHOLD_MS' ) ? (int) AIW_DEFAULT_SLOW_QUERY_THRESHOLD_MS : 500;
-			$val     = function_exists( 'get_option' ) ? (int) get_option( 'aiw_slow_query_threshold_ms', $default ) : $default;
+			$val     = $default;
+			if ( function_exists( 'is_network_admin' ) && is_network_admin() && function_exists( 'get_site_option' ) ) {
+				$val = (int) get_site_option( 'aiw_slow_query_threshold_ms', $default );
+			} elseif ( function_exists( 'get_option' ) ) {
+				$val = (int) get_option( 'aiw_slow_query_threshold_ms', $default );
+			}
 			echo '<input type="number" min="10" name="aiw_slow_query_threshold_ms" value="' . (int) $val . '" style="width:90px;" />';
 			echo '<p class="description">Emit db_slow_query_ms metrics for queries ≥ this duration (SAVEQUERIES required). Also counts db_slow_query_count. Recommended default: ' . $default . '.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
@@ -437,7 +457,8 @@ class SettingsPage {
 	}
 
 	public function render( $forced_tab = null ) {
-		if ( function_exists( 'current_user_can' ) && ! current_user_can( 'manage_options' ) )
+		$cap = ( function_exists( 'is_network_admin' ) && is_network_admin() ) ? 'manage_network_options' : 'manage_options';
+		if ( function_exists( 'current_user_can' ) && ! current_user_can( $cap ) )
 			return;
 
 		// Handle test telemetry postback
