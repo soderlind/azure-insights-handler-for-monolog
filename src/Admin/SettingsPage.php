@@ -273,7 +273,8 @@ class SettingsPage {
 			return; // outside WP runtime
 		}
 		// Register stored options
-		register_setting( self::OPTION_GROUP, 'aiw_connection_string' );
+		// Secrets: add sanitize callbacks so we can encrypt & avoid overwriting with masked placeholders.
+		register_setting( self::OPTION_GROUP, 'aiw_connection_string', [ 'sanitize_callback' => [ $this, 'sanitize_connection_string' ] ] );
 		register_setting( self::OPTION_GROUP, 'aiw_instrumentation_key', [ 'sanitize_callback' => [ $this, 'sanitize_instrumentation_key' ] ] );
 		register_setting( self::OPTION_GROUP, 'aiw_use_mock' );
 		register_setting( self::OPTION_GROUP, 'aiw_min_level' );
@@ -684,6 +685,41 @@ class SettingsPage {
 			return '';
 		}
 		return $value;
+	}
+
+	/**
+	 * Sanitize + encrypt connection string. Avoid overwriting with masked placeholder.
+	 */
+	public function sanitize_connection_string( $value ) {
+		$value = (string) $value;
+		$trim  = trim( $value );
+		// If user submits the masked placeholder (all asterisks or bullet chars), keep existing stored secret.
+		if ( $trim === '' ) {
+			return '';
+		}
+		$placeholders = [ '******** (encrypted)', '••••••••••••••••••••••••••••••••••••••••' ];
+		if ( in_array( $trim, $placeholders, true ) ) {
+			// Return current stored option (do not re-encrypt placeholder)
+			if ( function_exists( 'get_option' ) ) {
+				$current = get_option( 'aiw_connection_string', '' );
+				return $current; // already encrypted/plain as stored
+			}
+			return '';
+		}
+		// Basic validation: require InstrumentationKey= and IngestionEndpoint= fragments (loose check)
+		if ( stripos( $trim, 'InstrumentationKey=' ) === false || stripos( $trim, 'IngestionEndpoint=' ) === false ) {
+			// Allow legacy raw instrumentation key only if it looks like a GUID
+			if ( ! preg_match( '/InstrumentationKey=/i', $trim ) && preg_match( '/^[a-f0-9-]{32,36}$/i', $trim ) ) {
+				// Treat as plain instrumentation key – still encrypt for storage
+				return \AzureInsightsMonolog\Security\Secrets::encrypt( $trim );
+			}
+			if ( function_exists( 'add_settings_error' ) ) {
+				add_settings_error( 'aiw_connection_string', 'aiw_invalid_conn', 'Connection string should include InstrumentationKey and IngestionEndpoint.' );
+			}
+			// Store nothing on invalid input.
+			return '';
+		}
+		return \AzureInsightsMonolog\Security\Secrets::encrypt( $trim );
 	}
 
 	private function runtime_status(): array {
