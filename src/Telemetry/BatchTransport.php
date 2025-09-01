@@ -41,6 +41,9 @@ class BatchTransport {
 					update_option( 'aiw_last_error_code', 'transport' );
 					update_option( 'aiw_last_error_message', $response->get_error_message() );
 				}
+				if ( function_exists( 'error_log' ) ) {
+					@error_log( '[AIW] transport error: ' . $response->get_error_message() );
+				}
 			} else {
 				$code = function_exists( 'wp_remote_retrieve_response_code' ) ? (int) wp_remote_retrieve_response_code( $response ) : 0;
 				if ( $code < 200 || $code >= 300 ) {
@@ -54,6 +57,15 @@ class BatchTransport {
 							$body_excerpt = substr( (string) $response[ 'body' ], 0, 200 );
 						}
 						update_option( 'aiw_last_error_message', $body_excerpt );
+					}
+					if ( function_exists( 'error_log' ) ) {
+						$len  = 0;
+						$body = '';
+						if ( is_array( $response ) && isset( $response['body'] ) ) {
+							$body = (string) $response['body'];
+							$len  = strlen( $body );
+						}
+						@error_log( '[AIW] HTTP ' . $code . ' ingest response len=' . $len . ' body_snip=' . substr( $body, 0, 300 ) );
 					}
 				}
 			}
