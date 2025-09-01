@@ -526,7 +526,12 @@ class SettingsPage {
 			'test'       => [ 'Test Telemetry', 'dashicons-controls-repeat' ],
 		];
 		$active_tab = $this->get_active_tab( $forced_tab );
-		$base_url   = function_exists( 'admin_url' ) ? admin_url( 'admin.php?page=' . self::PAGE_SLUG ) : '?page=' . self::PAGE_SLUG;
+		// Build correct base URL depending on whether we're in network admin or site admin context.
+		if ( function_exists( 'is_network_admin' ) && is_network_admin() && function_exists( 'network_admin_url' ) ) {
+			$base_url = network_admin_url( 'admin.php?page=' . self::PAGE_SLUG );
+		} else {
+			$base_url = function_exists( 'admin_url' ) ? admin_url( 'admin.php?page=' . self::PAGE_SLUG ) : '?page=' . self::PAGE_SLUG;
+		}
 
 		echo '<h2 class="nav-tab-wrapper aiw-modern-nav">';
 		foreach ( $tabs as $slug => $meta ) {
