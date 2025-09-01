@@ -134,6 +134,7 @@ class TelemetryClient {
 			'data' => [ 
 				'baseType' => 'MessageData',
 				'baseData' => [ 
+					'ver'           => 2,
 					'message'       => $message,
 					'severityLevel' => $severity,
 					'properties'    => $dimensions,
@@ -159,6 +160,7 @@ class TelemetryClient {
 			'data' => [ 
 				'baseType' => 'EventData',
 				'baseData' => [ 
+					'ver'           => 2,
 					'name'         => $name,
 					'properties'   => $properties,
 					'measurements' => $measurements,
@@ -168,14 +170,20 @@ class TelemetryClient {
 	}
 
 	private function format_duration_timespan( float $duration_ms ): string {
+		// Application Insights expects: d.HH:MM:SS.fffffff (days optional, 7-digit fraction)
+		// We'll always include the day component (even 0) for strictness.
 		$total_ms      = (int) round( $duration_ms );
-		$ms            = $total_ms % 1000;
 		$total_seconds = intdiv( $total_ms, 1000 );
+		$ms            = $total_ms % 1000; // 0-999
 		$seconds       = $total_seconds % 60;
 		$total_minutes = intdiv( $total_seconds, 60 );
 		$minutes       = $total_minutes % 60;
-		$hours         = intdiv( $total_minutes, 60 );
-		return sprintf( '%02d:%02d:%02d.%03d', $hours, $minutes, $seconds, $ms );
+		$total_hours   = intdiv( $total_minutes, 60 );
+		$days          = intdiv( $total_hours, 24 );
+		$hours         = $total_hours % 24;
+		// Convert milliseconds to 7-digit fraction (ms * 10^4)
+		$fraction7 = $ms * 10000; // 3 digits -> 7 digits
+		return sprintf( '%d.%02d:%02d:%02d.%07d', $days, $hours, $minutes, $seconds, $fraction7 );
 	}
 
 	/** @param array<string,mixed> $data */
@@ -192,6 +200,7 @@ class TelemetryClient {
 			'data' => [ 
 				'baseType' => 'RequestData',
 				'baseData' => [ 
+					'ver'           => 2,
 					'id'           => $span_id,
 					'name'         => $data[ 'name' ] ?? 'request',
 					'url'          => $data[ 'url' ] ?? '',
@@ -232,6 +241,7 @@ class TelemetryClient {
 			'data' => [ 
 				'baseType' => 'ExceptionData',
 				'baseData' => [ 
+					'ver'            => 2,
 					'exceptions'    => [ 
 						[ 
 							'typeName'     => get_class( $exception ),
@@ -270,6 +280,8 @@ class TelemetryClient {
 		$time                     = gmdate( 'c' );
 		$properties[ 'trace_id' ] = $trace_id;
 		$properties[ 'span_id' ]  = $span_id;
+		// Coerce value numeric and build full metric structure (AI expects ver, metrics array objects with optional count/min/max/stdDev)
+		$numeric = (float) $value;
 		return [ 
 			'name' => 'Microsoft.ApplicationInsights.Metric',
 			'time' => $time,
@@ -281,7 +293,8 @@ class TelemetryClient {
 			'data' => [ 
 				'baseType' => 'MetricData',
 				'baseData' => [ 
-					'metrics'    => [ [ 'name' => $name, 'value' => $value ] ],
+					'ver'        => 2,
+					'metrics'    => [ [ 'name' => $name, 'value' => $numeric, 'count' => 1, 'min' => $numeric, 'max' => $numeric, 'stdDev' => 0 ] ],
 					'properties' => $properties,
 				],
 			],
