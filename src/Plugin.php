@@ -115,36 +115,8 @@ class Plugin {
 		$level         = $this->convert_min_level_to_monolog( $config[ 'min_level' ] );
 		$this->handler = new AzureInsightsHandler( $this->telemetry_client, $config, $level );
 
-		// Admin settings UI handling (single-site vs multisite + network activation logic)
-		if ( function_exists( 'is_multisite' ) && is_multisite() ) {
-			$network_active = false;
-			if ( defined( 'AIW_PLUGIN_FILE' ) && function_exists( 'plugin_basename' ) && function_exists( 'is_plugin_active_for_network' ) ) {
-				$basename       = plugin_basename( AIW_PLUGIN_FILE );
-				$network_active = is_plugin_active_for_network( $basename );
-			}
-			if ( $network_active ) {
-				// When network-activated: suppress per-site page, expose only a network settings page in network admin.
-				if ( function_exists( 'is_network_admin' ) && is_network_admin() ) {
-					( new Admin\NetworkSettingsPage() )->register();
-					if ( $use_mock ) {
-						( new MockViewer() )->register();
-					}
-					( new RetryQueueViewer() )->register();
-					( new StatusPanel() )->register();
-				}
-			} else {
-				// Multisite but NOT network-activated: behave like normal per-site activation.
-				if ( function_exists( 'is_admin' ) && is_admin() && ( ! function_exists( 'is_network_admin' ) || ! is_network_admin() ) ) {
-					( new SettingsPage() )->register();
-					if ( $use_mock ) {
-						( new MockViewer() )->register();
-					}
-					( new RetryQueueViewer() )->register();
-					( new StatusPanel() )->register();
-				}
-			}
-		} elseif ( function_exists( 'is_admin' ) && is_admin() ) {
-			// Single-site install: always show per-site settings page.
+		// Unified admin settings UI (avoid NetworkSettingsPage duplication). Always register SettingsPage in admin (site & network contexts).
+		if ( function_exists( 'is_admin' ) && is_admin() ) {
 			( new SettingsPage() )->register();
 			if ( $use_mock ) {
 				( new MockViewer() )->register();
