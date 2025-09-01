@@ -13,6 +13,8 @@ class SettingsPage {
 			return;
 		if ( function_exists( 'add_action' ) ) {
 			add_action( 'admin_menu', [ $this, 'menu' ] );
+			// Also add to network admin when plugin network-activated
+			add_action( 'network_admin_menu', [ $this, 'menu' ] );
 			add_action( 'admin_init', [ $this, 'settings' ] );
 			// Enqueue assets only on our pages
 			add_action( 'admin_enqueue_scripts', function ($hook) {
@@ -245,21 +247,24 @@ class SettingsPage {
 	public function menu() {
 		if ( ! function_exists( 'add_menu_page' ) || ! function_exists( 'add_submenu_page' ) )
 			return;
-		// Top-level page (Status default)
-		$top = add_menu_page( 'Azure Insights', 'Azure Insights', 'manage_options', self::PAGE_SLUG, [ $this, 'render' ], 'dashicons-chart-area', 60 );
+		$is_network = function_exists( 'is_network_admin' ) && is_network_admin();
+		$cap        = $is_network ? 'manage_network_options' : 'manage_options';
+		// Use different menu position to avoid clashes in network admin
+		$menu_slug = self::PAGE_SLUG;
+		$top       = add_menu_page( 'Azure Insights', 'Azure Insights', $cap, $menu_slug, [ $this, 'render' ], 'dashicons-chart-area', 60 );
 		if ( is_string( $top ) ) {
 			$this->page_hooks[ $top ] = true;
 		}
 		$subtabs = [ 
-			self::PAGE_SLUG . '-status' => [ 'Status', 'status' ],
-			self::PAGE_SLUG . '-connection' => [ 'Connection', 'connection' ],
-			self::PAGE_SLUG . '-behavior' => [ 'Behavior', 'behavior' ],
-			self::PAGE_SLUG . '-redaction' => [ 'Redaction', 'redaction' ],
-			self::PAGE_SLUG . '-test' => [ 'Test Telemetry', 'test' ],
+			$menu_slug . '-status' => [ 'Status', 'status' ],
+			$menu_slug . '-connection' => [ 'Connection', 'connection' ],
+			$menu_slug . '-behavior' => [ 'Behavior', 'behavior' ],
+			$menu_slug . '-redaction' => [ 'Redaction', 'redaction' ],
+			$menu_slug . '-test' => [ 'Test Telemetry', 'test' ],
 		];
 		foreach ( $subtabs as $slug => $meta ) {
 			list( $label, $tab ) = $meta;
-			$hook                = add_submenu_page( self::PAGE_SLUG, $label, $label, 'manage_options', $slug, function () use ($tab) {
+			$hook                = add_submenu_page( $menu_slug, $label, $label, $cap, $slug, function () use ($tab) {
 				$this->render( $tab );
 			} );
 			if ( is_string( $hook ) ) {
