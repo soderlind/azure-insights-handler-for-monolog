@@ -68,10 +68,19 @@ class PerformanceMetricsTest extends TestCase {
 		$buffer = $telemetry->debug_get_buffer();
 		$names  = [];
 		foreach ( $buffer as $item ) {
+			if ( isset( $item['data']['baseData']['ver'] ) ) {
+				$this->assertEquals( 2, $item['data']['baseData']['ver'], 'Metric telemetry ver should be 2' );
+			}
 			if ( isset( $item[ 'data' ][ 'baseData' ][ 'metrics' ] ) && is_array( $item[ 'data' ][ 'baseData' ][ 'metrics' ] ) ) {
 				foreach ( $item[ 'data' ][ 'baseData' ][ 'metrics' ] as $m ) {
 					if ( isset( $m[ 'name' ] ) ) {
 						$names[] = $m[ 'name' ];
+						// Ensure expanded metric schema keys exist (they may be null depending on metric aggregation)
+						$this->assertArrayHasKey( 'value', $m );
+						$this->assertArrayHasKey( 'count', $m );
+						$this->assertArrayHasKey( 'min', $m );
+						$this->assertArrayHasKey( 'max', $m );
+						$this->assertArrayHasKey( 'stdDev', $m );
 					}
 				}
 			}

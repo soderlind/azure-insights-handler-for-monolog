@@ -104,6 +104,29 @@ namespace AzureInsightsMonolog\Tests {
 			$m->invoke( $handler, $r3 );
 			$this->assertCount( 2, $client->debug_get_buffer(), 'Different exception allowed' );
 		}
+
+		public function testSanitizeConnectionStringRetainsEncryptedValueWhenMaskedPlaceholderSubmitted() {
+			// Simulate existing saved encrypted connection string
+			$plain = 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://example.endpoint/';
+			$enc   = Secrets::encrypt( $plain );
+			update_option( 'aiw_connection_string', $enc );
+			// SettingsPage::sanitize_connection_string is namespaced in Admin class; call via reflection
+			$class = new \ReflectionClass( '\\AzureInsightsMonolog\\Admin\\SettingsPage' );
+			$method = $class->getMethod( 'sanitize_connection_string' );
+			$method->setAccessible( true );
+			$instance = $class->newInstance();
+			$result   = $method->invoke( $instance, '********' ); // masked placeholder user would submit
+			$this->assertEquals( $enc, $result, 'Sanitizer should return previously stored encrypted value when masked placeholder provided.' );
+			// Submitting a new real value should encrypt (or return plain if OpenSSL unavailable)
+			$newPlain = 'InstrumentationKey=11111111-1111-1111-1111-111111111111;IngestionEndpoint=https://new.endpoint/';
+			$result2  = $method->invoke( $instance, $newPlain );
+			if ( function_exists( 'openssl_encrypt' ) ) {
+				$this->assertTrue( Secrets::is_encrypted( $result2 ), 'New value should be encrypted.' );
+				$this->assertNotEquals( $newPlain, $result2 );
+			} else {
+				$this->assertEquals( $newPlain, $result2 );
+			}
+		}
 	}
 }
 

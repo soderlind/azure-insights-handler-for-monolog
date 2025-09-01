@@ -25,6 +25,7 @@ class TelemetryClientTest extends TestCase {
 		$this->assertArrayHasKey( 'data', $item );
 		$this->assertEquals( 'MessageData', $item[ 'data' ][ 'baseType' ] );
 		$this->assertEquals( 'Test message', $item[ 'data' ][ 'baseData' ][ 'message' ] );
+		$this->assertEquals( 2, $item[ 'data' ][ 'baseData' ][ 'ver' ] );
 		$this->assertEquals( 'bar', $item[ 'data' ][ 'baseData' ][ 'properties' ][ 'foo' ] );
 		$this->assertEquals( 'traceid1234567890traceid12345678', $item[ 'data' ][ 'baseData' ][ 'properties' ][ 'trace_id' ] );
 	}
@@ -37,7 +38,9 @@ class TelemetryClientTest extends TestCase {
 			'url'  => 'https://example.test/',
 		], 1234.56, 'traceid1234567890traceid12345678', 'spanid1234567890', null );
 		$this->assertEquals( 'Microsoft.ApplicationInsights.Request', $item[ 'name' ] );
-		$this->assertMatchesRegularExpression( '/^00:00:01\.[0-9]{3}$/', $item[ 'data' ][ 'baseData' ][ 'duration' ] );
+		// New duration format d.HH:MM:SS.fffffff (day can be 0, fraction 7 digits)
+		$this->assertMatchesRegularExpression( '/^0\.[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{7}$/', $item[ 'data' ][ 'baseData' ][ 'duration' ] );
+		$this->assertEquals( 2, $item[ 'data' ][ 'baseData' ][ 'ver' ] );
 	}
 
 	public function testBuildExceptionItem() {
@@ -47,6 +50,7 @@ class TelemetryClientTest extends TestCase {
 		$item      = $client->build_exception_item( $exception, $record, 'traceid1234567890traceid12345678', 'spanid1234567890' );
 		$this->assertEquals( 'Microsoft.ApplicationInsights.Exception', $item[ 'name' ] );
 		$this->assertEquals( 'Boom', $item[ 'data' ][ 'baseData' ][ 'exceptions' ][ 0 ][ 'message' ] );
+		$this->assertEquals( 2, $item[ 'data' ][ 'baseData' ][ 'ver' ] );
 		$this->assertEquals( 'traceid1234567890traceid12345678', $item[ 'data' ][ 'baseData' ][ 'properties' ][ 'trace_id' ] );
 	}
 
@@ -58,6 +62,7 @@ class TelemetryClientTest extends TestCase {
 		$this->assertEquals( 'Microsoft.ApplicationInsights.Event', $item[ 'name' ] );
 		$this->assertEquals( 'EventData', $item[ 'data' ][ 'baseType' ] );
 		$this->assertEquals( 'SampleEvent', $item[ 'data' ][ 'baseData' ][ 'name' ] );
+		$this->assertEquals( 2, $item[ 'data' ][ 'baseData' ][ 'ver' ] );
 		$this->assertEquals( 'bar', $item[ 'data' ][ 'baseData' ][ 'properties' ][ 'foo' ] );
 		$this->assertEquals( 3.14, $item[ 'data' ][ 'baseData' ][ 'measurements' ][ 'count' ] );
 	}

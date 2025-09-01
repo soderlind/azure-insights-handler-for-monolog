@@ -8,6 +8,19 @@ The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/) a
 ### Added
 - Placeholder section for upcoming changes.
 
+## [0.6.0] - 2025-09-01
+### Added
+- Connection string encryption & sanitize callback preventing placeholder overwrite on save (multisite-safe).
+- Recommended default constants: `AIW_DEFAULT_BATCH_MAX_SIZE`, `AIW_DEFAULT_BATCH_FLUSH_INTERVAL`, `AIW_DEFAULT_SLOW_HOOK_THRESHOLD_MS`, `AIW_DEFAULT_SLOW_QUERY_THRESHOLD_MS` (documented in README) used as initial/fallback defaults.
+- Enhanced transport diagnostics: pre-send first line preview, full HTTP 400 response body snippet logging, untruncated admin error display.
+- Telemetry schema compliance: added `baseData.ver = 2` across all item types; expanded MetricData entries to include `count`, `min`, `max`, `stdDev` fields to resolve ingestion 400 errors when performance metrics enabled.
+
+### Changed
+- Duration formatting updated to Azure timespan format `d.HH:MM:SS.fffffff`.
+
+### Fixed
+- Resolved HTTP 400 ingestion errors triggered when Performance Metrics feature was enabled (schema mismatch root cause).
+
 ## [0.5.0] - 2025-08-31
 ### Changed
 - Version bump (no functional changes after 0.4.0; preparing for next development cycle).

@@ -701,7 +701,7 @@ class SettingsPage {
 		if ( $trim === '' ) {
 			return '';
 		}
-		$placeholders = [ '******** (encrypted)', '••••••••••••••••••••••••••••••••••••••••' ];
+		$placeholders = [ '********', '******** (encrypted)', '••••••••••••••••••••••••••••••••••••••••' ];
 		if ( in_array( $trim, $placeholders, true ) ) {
 			// Return current stored option (do not re-encrypt placeholder)
 			if ( function_exists( 'get_option' ) ) {

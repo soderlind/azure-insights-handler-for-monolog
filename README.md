@@ -129,6 +129,16 @@ traces
 - Slow Hook Threshold: Milliseconds above which hook duration metrics are recorded.
  - Slow Query Threshold: Milliseconds above which slow DB query metrics are recorded.
 
+### Recommended Default Constants
+You can override the built-in recommended defaults via `wp-config.php` before the plugin loads:
+```php
+define( 'AIW_DEFAULT_BATCH_MAX_SIZE', 20 );            // Items per batch (balance memory vs HTTP overhead)
+define( 'AIW_DEFAULT_BATCH_FLUSH_INTERVAL', 5 );       // Seconds before flushing partial batch
+define( 'AIW_DEFAULT_SLOW_HOOK_THRESHOLD_MS', 150 );   // Hook duration metric threshold
+define( 'AIW_DEFAULT_SLOW_QUERY_THRESHOLD_MS', 500 );  // Slow DB query threshold
+```
+If these constants are absent the same numeric defaults are used. They only affect the initial / fallback values (saved options override after first save).
+
 ## Helper Functions
 ```php
 aiw_current_trace_id();
