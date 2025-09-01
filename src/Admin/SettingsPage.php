@@ -863,8 +863,19 @@ class SettingsPage {
 		echo '<h2>📦 Batching Configuration</h2>';
 		echo '<table class="aiw-form-table" role="presentation">';
 
-		$batch_size     = function_exists( 'get_option' ) ? (int) get_option( 'aiw_batch_max_size', 20 ) : 20;
-		$flush_interval = function_exists( 'get_option' ) ? (int) get_option( 'aiw_batch_flush_interval', 10 ) : 10;
+		// Defaults reflect constants when defined.
+		$default_batch_size = defined( 'AIW_DEFAULT_BATCH_MAX_SIZE' ) ? (int) AIW_DEFAULT_BATCH_MAX_SIZE : 20;
+		$default_flush_int  = defined( 'AIW_DEFAULT_BATCH_FLUSH_INTERVAL' ) ? (int) AIW_DEFAULT_BATCH_FLUSH_INTERVAL : 5;
+		$is_network_ctx     = function_exists( 'is_network_admin' ) && is_network_admin();
+		$batch_size         = $default_batch_size;
+		$flush_interval     = $default_flush_int;
+		if ( $is_network_ctx && function_exists( 'get_site_option' ) ) {
+			$batch_size     = (int) get_site_option( 'aiw_batch_max_size', $default_batch_size );
+			$flush_interval = (int) get_site_option( 'aiw_batch_flush_interval', $default_flush_int );
+		} elseif ( function_exists( 'get_option' ) ) {
+			$batch_size     = (int) get_option( 'aiw_batch_max_size', $default_batch_size );
+			$flush_interval = (int) get_option( 'aiw_batch_flush_interval', $default_flush_int );
+		}
 
 		echo '<tr><th scope="row">Batch Size</th><td>';
 		echo '<input type="number" min="1" max="100" name="aiw_batch_max_size" value="' . (int) $batch_size . '" class="aiw-input" style="width:100px;" />';
@@ -896,8 +907,17 @@ class SettingsPage {
 		echo '<h2>📊 Performance Monitoring</h2>';
 		echo '<table class="aiw-form-table" role="presentation">';
 
-		$hook_thresh  = function_exists( 'get_option' ) ? (int) get_option( 'aiw_slow_hook_threshold_ms', 150 ) : 150;
-		$query_thresh = function_exists( 'get_option' ) ? (int) get_option( 'aiw_slow_query_threshold_ms', 500 ) : 500;
+		$default_hook_thresh  = defined( 'AIW_DEFAULT_SLOW_HOOK_THRESHOLD_MS' ) ? (int) AIW_DEFAULT_SLOW_HOOK_THRESHOLD_MS : 150;
+		$default_query_thresh = defined( 'AIW_DEFAULT_SLOW_QUERY_THRESHOLD_MS' ) ? (int) AIW_DEFAULT_SLOW_QUERY_THRESHOLD_MS : 500;
+		$hook_thresh          = $default_hook_thresh;
+		$query_thresh         = $default_query_thresh;
+		if ( $is_network_ctx && function_exists( 'get_site_option' ) ) {
+			$hook_thresh  = (int) get_site_option( 'aiw_slow_hook_threshold_ms', $default_hook_thresh );
+			$query_thresh = (int) get_site_option( 'aiw_slow_query_threshold_ms', $default_query_thresh );
+		} elseif ( function_exists( 'get_option' ) ) {
+			$hook_thresh  = (int) get_option( 'aiw_slow_hook_threshold_ms', $default_hook_thresh );
+			$query_thresh = (int) get_option( 'aiw_slow_query_threshold_ms', $default_query_thresh );
+		}
 
 		echo '<tr><th scope="row">Slow Hook Threshold</th><td>';
 		echo '<div style="display:flex;align-items:center;gap:8px;">';
