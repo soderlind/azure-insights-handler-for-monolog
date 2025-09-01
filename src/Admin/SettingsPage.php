@@ -377,6 +377,9 @@ class SettingsPage {
 			} elseif ( function_exists( 'get_option' ) ) {
 				$val = (int) get_option( 'aiw_batch_max_size', $default );
 			}
+			if ( $val <= 0 ) { // Normalize legacy zero/invalid stored values to recommended default
+				$val = $default;
+			}
 			echo '<input type="number" min="1" name="aiw_batch_max_size" value="' . (int) $val . '" style="width:90px;" />';
 			echo '<p class="description">Flush when this many telemetry items queued. Recommended default: ' . $default . '.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
@@ -388,6 +391,9 @@ class SettingsPage {
 				$val = (int) get_site_option( 'aiw_batch_flush_interval', $default );
 			} elseif ( function_exists( 'get_option' ) ) {
 				$val = (int) get_option( 'aiw_batch_flush_interval', $default );
+			}
+			if ( $val <= 0 ) {
+				$val = $default;
 			}
 			echo '<input type="number" min="1" name="aiw_batch_flush_interval" value="' . (int) $val . '" style="width:90px;" />';
 			echo '<p class="description">Auto flush oldest batch if no flush after this many seconds. Recommended default: ' . $default . '.</p>';
@@ -408,6 +414,9 @@ class SettingsPage {
 			} elseif ( function_exists( 'get_option' ) ) {
 				$val = (int) get_option( 'aiw_slow_hook_threshold_ms', $default );
 			}
+			if ( $val <= 0 ) {
+				$val = $default;
+			}
 			echo '<input type="number" min="10" name="aiw_slow_hook_threshold_ms" value="' . (int) $val . '" style="width:90px;" />';
 			echo '<p class="description">Record hook_duration_ms metrics only when duration exceeds this threshold. Recommended default: ' . $default . '.</p>';
 		}, self::PAGE_SLUG, 'aiw_behavior' );
@@ -419,6 +428,9 @@ class SettingsPage {
 				$val = (int) get_site_option( 'aiw_slow_query_threshold_ms', $default );
 			} elseif ( function_exists( 'get_option' ) ) {
 				$val = (int) get_option( 'aiw_slow_query_threshold_ms', $default );
+			}
+			if ( $val <= 0 ) {
+				$val = $default;
 			}
 			echo '<input type="number" min="10" name="aiw_slow_query_threshold_ms" value="' . (int) $val . '" style="width:90px;" />';
 			echo '<p class="description">Emit db_slow_query_ms metrics for queries ≥ this duration (SAVEQUERIES required). Also counts db_slow_query_count. Recommended default: ' . $default . '.</p>';
@@ -876,6 +888,12 @@ class SettingsPage {
 			$batch_size     = (int) get_option( 'aiw_batch_max_size', $default_batch_size );
 			$flush_interval = (int) get_option( 'aiw_batch_flush_interval', $default_flush_int );
 		}
+		if ( $batch_size <= 0 ) {
+			$batch_size = $default_batch_size;
+		}
+		if ( $flush_interval <= 0 ) {
+			$flush_interval = $default_flush_int;
+		}
 
 		echo '<tr><th scope="row">Batch Size</th><td>';
 		echo '<input type="number" min="1" max="100" name="aiw_batch_max_size" value="' . (int) $batch_size . '" class="aiw-input" style="width:100px;" />';
@@ -917,6 +935,12 @@ class SettingsPage {
 		} elseif ( function_exists( 'get_option' ) ) {
 			$hook_thresh  = (int) get_option( 'aiw_slow_hook_threshold_ms', $default_hook_thresh );
 			$query_thresh = (int) get_option( 'aiw_slow_query_threshold_ms', $default_query_thresh );
+		}
+		if ( $hook_thresh <= 0 ) {
+			$hook_thresh = $default_hook_thresh;
+		}
+		if ( $query_thresh <= 0 ) {
+			$query_thresh = $default_query_thresh;
 		}
 
 		echo '<tr><th scope="row">Slow Hook Threshold</th><td>';
