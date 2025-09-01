@@ -18,6 +18,20 @@ define( 'AIW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AIW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AIW_PLUGIN_VERSION', '0.5.0' );
 
+// Opinionated recommended defaults (used when options not yet saved)
+if ( ! defined( 'AIW_DEFAULT_BATCH_MAX_SIZE' ) ) {
+	define( 'AIW_DEFAULT_BATCH_MAX_SIZE', 20 ); // Balance memory vs. HTTP overhead
+}
+if ( ! defined( 'AIW_DEFAULT_BATCH_FLUSH_INTERVAL' ) ) {
+	define( 'AIW_DEFAULT_BATCH_FLUSH_INTERVAL', 5 ); // Low latency flush without excessive calls
+}
+if ( ! defined( 'AIW_DEFAULT_SLOW_HOOK_THRESHOLD_MS' ) ) {
+	define( 'AIW_DEFAULT_SLOW_HOOK_THRESHOLD_MS', 150 ); // Only capture noticeably slow hooks
+}
+if ( ! defined( 'AIW_DEFAULT_SLOW_QUERY_THRESHOLD_MS' ) ) {
+	define( 'AIW_DEFAULT_SLOW_QUERY_THRESHOLD_MS', 500 ); // Common WP perf baseline
+}
+
 // Optional disable & diagnostics (same semantics as previous version)
 if ( defined( 'AIW_DISABLE' ) && AIW_DISABLE ) {
 	if ( function_exists( 'error_log' ) )
